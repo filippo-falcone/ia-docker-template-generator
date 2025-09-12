@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+
+# Build
+/dist
+/build
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Others
+*.tgz
+*.gz
+*.zip
+
+# Docker
+/docker/*.log
+/docker/*.tmp
+
+# Output
+ai-template-project/

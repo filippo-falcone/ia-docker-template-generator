@@ -1,0 +1,24 @@
+{
+  "name": "ia-docker-template-generator",
+  "version": "1.0.0",
+  "description": "![Project Logo](https://via.placeholder.com/150x50?text=AI+Template+Generator)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filippo-falcone/ia-docker-template-generator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/filippo-falcone/ia-docker-template-generator/issues"
+  },
+  "homepage": "https://github.com/filippo-falcone/ia-docker-template-generator#readme",
+  "dependencies": {
+    "axios": "^1.12.1",
+    "inquirer": "^12.9.4"
+  }
+}
