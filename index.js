@@ -39,13 +39,13 @@ async function askPreferences() {
 // [EN] Ask for OpenAI API Key
 // [IT] Chiedi la chiave API OpenAI
 async function askApiKey() {
-  let apiKey = process.env.OPENAI_API_KEY;
+  let apiKey = process.env.HF_TOKEN;
   if (!apiKey) {
-  const answer = await prompt([
+    const answer = await prompt([
       {
         type: 'input',
         name: 'apiKey',
-        message: '[EN] Enter your OpenAI API Key:\n[IT] Inserisci la tua chiave API OpenAI:',
+        message: '[EN] Enter your Hugging Face access token:\n[IT] Inserisci il tuo token Hugging Face:',
       },
     ]);
     apiKey = answer.apiKey;
@@ -56,12 +56,11 @@ async function askApiKey() {
 // [EN] Generate project structure and Dockerfile using OpenAI
 // [IT] Genera la struttura del progetto e il Dockerfile usando OpenAI
 async function generateWithOpenAI(apiKey, frontend, backend) {
-  // [EN] Prepare a robust prompt for OpenAI
-  // [IT] Prepara un prompt robusto per OpenAI
-  const prompt = `
-You are an expert Node.js/JavaScript project generator. The user has selected:
-- Frontend: ${frontend}
-- Backend: ${backend}
+  // [EN] Prepare a robust prompt for Hugging Face
+  // [IT] Prepara un prompt robusto per Hugging Face
+  const prompt = `You are an expert Node.js/JavaScript project generator. The user has selected:
+Frontend: ${frontend}
+Backend: ${backend}
 
 Generate a complete, production-ready CLI template with:
 1. A valid package.json (name, version, description, author, license, correct dependencies for Node.js 22+, inquirer v9+, axios, and scripts).
@@ -72,18 +71,15 @@ Generate a complete, production-ready CLI template with:
 6. All code and comments must be bilingual (EN/IT).
 7. The template must be immediately installable and runnable (npm install, node index.js) with no missing files or dependency errors.
 8. Adapt code for inquirer v9+ (use createPromptModule).
-9. Output all file contents and folder structure, ready to be written to disk.
-`;
+9. Output all file contents and folder structure, ready to be written to disk.`;
 
-  // [EN] Call OpenAI API
-  // [IT] Chiama l'API di OpenAI
+  // [EN] Call Hugging Face Inference API
+  // [IT] Chiama l'API Hugging Face Inference
   try {
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
       {
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 800,
+        inputs: prompt,
       },
       {
         headers: {
@@ -92,14 +88,19 @@ Generate a complete, production-ready CLI template with:
         },
       }
     );
-    return response.data.choices[0].message.content;
+    // La risposta può essere un array di oggetti con campo 'generated_text'
+    if (Array.isArray(response.data) && response.data[0]?.generated_text) {
+      return response.data[0].generated_text;
+    }
+    // In caso di risposta diversa
+    return JSON.stringify(response.data, null, 2);
   } catch (error) {
-    if (error.response && error.response.status === 429 && error.response.data?.error?.code === 'insufficient_quota') {
-      console.error('[EN] Error: Your OpenAI API quota is exceeded. Please check your plan and billing details.');
-      console.error('[IT] Errore: Quota API OpenAI esaurita. Controlla il tuo piano e i dettagli di fatturazione.');
+    if (error.response && error.response.data) {
+      console.error('[EN] Hugging Face API error:', JSON.stringify(error.response.data));
+      console.error('[IT] Errore API Hugging Face:', JSON.stringify(error.response.data));
     } else {
-      console.error('[EN] Error calling OpenAI API:', error.message);
-      console.error('[IT] Errore chiamando l’API OpenAI:', error.message);
+      console.error('[EN] Error calling Hugging Face API:', error.message);
+      console.error('[IT] Errore chiamando l’API Hugging Face:', error.message);
     }
     return null;
   }
