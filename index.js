@@ -77,7 +77,7 @@ Generate a complete, production-ready CLI template with:
   // [IT] Chiama l'API Hugging Face Inference
   try {
     const response = await axios.post(
-      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+      'https://api-inference.huggingface.co/models/gpt2',
       {
         inputs: prompt,
       },
