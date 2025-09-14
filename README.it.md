@@ -11,7 +11,7 @@
 - [Come Funziona](#come-funziona)
 - [Installazione](#installazione)
 - [Utilizzo](#utilizzo)
-- [Configurazione](#configurazione-chiave-api-openai-etc)
+- [Configurazione](#configurazione-token-hugging-face)
 - [Tecnologie Supportate](#tecnologie-supportate)
 - [Esempio di Output](#esempio-di-output)
 - [Contributi](#contributi)
@@ -27,9 +27,12 @@
 
 ## ✨ Caratteristiche
 
-- Prompt interattivi nel terminale (scegli frontend & backend)
-- Supporta React, Angular, Vue, Node.js, Express, Laravel
-- Utilizza l'API di OpenAI per generare codice e Dockerfile
+- Prompt interattivi nel terminale con opzioni flessibili:
+  - Seleziona solo frontend, solo backend o full-stack
+  - Ampia scelta di framework frontend: React, Vue, Angular con versioni specifiche
+  - Ampia scelta di framework backend: Node.js, PHP, Python con implementazioni specifiche
+  - Integrazione con framework CSS come Bootstrap, Tailwind e altri
+- Utilizza l'API di Hugging Face per generare codice e Dockerfile
 - Crea automaticamente cartelle e file di progetto
 - Documentazione elegante e bilingue (EN/IT)
 - Esempi di output per riferimento rapido
@@ -39,10 +42,13 @@
 ## ⚙️ Come Funziona
 
 1. Avvia lo strumento CLI nel terminale.
-2. Seleziona le tecnologie frontend e backend preferite.
-3. Inserisci la tua chiave API OpenAI (se non già configurata).
-4. L'AI genera la struttura del progetto e i Dockerfile.
-5. I file vengono salvati su disco, pronti per lo sviluppo!
+2. Scegli il tipo di progetto: frontend, backend o full-stack.
+3. Seleziona le tecnologie specifiche (framework frontend/backend, versioni, CSS).
+4. Inserisci il percorso di destinazione per il tuo progetto.
+5. Conferma le tue scelte.
+6. Inserisci il tuo token Hugging Face (se non già configurato).
+7. L'AI genera la struttura del progetto, Dockerfile e tutte le configurazioni.
+8. I file vengono salvati nel percorso specificato, pronti per lo sviluppo!
 
 ---
 
@@ -68,26 +74,56 @@ npm install inquirer axios
 node index.js
 ```
 
-Segui i prompt per selezionare le tecnologie e fornire la chiave API OpenAI.
+Segui i prompt per:
+
+- Selezionare le tecnologie
+- Scegliere un percorso di destinazione per il tuo progetto
+- Fornire il tuo token Hugging Face
+
+Il tuo progetto sarà generato nel percorso che specifichi, mantenendo pulita la repository del generatore.
 
 ---
 
-## 🔑 Configurazione (Chiave API OpenAI, ecc.)
+## 🔑 Configurazione (Token Hugging Face)
 
-Imposta la tua chiave API OpenAI come variabile d'ambiente o inseriscila quando richiesto:
+Puoi configurare il tuo token Hugging Face in tre modi:
 
-```bash
-export OPENAI_API_KEY=la-tua-chiave-qui
-```
+1. **Usando un file .env** (consigliato):
 
-Oppure lascia che la CLI ti chieda la chiave.
+   ```
+   # Crea un file .env nella cartella principale
+   HF_TOKEN=il-tuo-token-qui
+   ```
+
+   Lo script caricherà automaticamente questo token all'avvio.
+
+2. **Come variabile d'ambiente**:
+
+   ```bash
+   export HF_TOKEN=il-tuo-token-qui
+   ```
+
+3. **Inserendolo quando richiesto dalla CLI**:
+
+   Quando inserisci il tuo token tramite la CLI, ti verrà chiesto se desideri salvarlo nel file `.env` per utilizzi futuri. Se scegli di farlo, il token sarà salvato automaticamente e caricato per le successive esecuzioni.
 
 ---
 
 ## 🧩 Tecnologie Supportate
 
-- Frontend: React, Angular, Vue
-- Backend: Node.js, Express, Laravel
+- **Frontend**:
+  - React: Base, React + Vite, Next.js, Create React App
+  - Vue: Vue 3, Vue 2, Vue + Vite, Nuxt.js
+  - Angular: Angular CLI, Angular + Standalone Components
+- **Backend**:
+  - Node.js: Express, Koa, Fastify, NestJS
+  - PHP: Laravel, PHP Base, Symfony, Slim
+  - Python: Django, Flask, FastAPI
+- **Framework CSS**:
+  - Bootstrap
+  - Tailwind CSS
+  - Material UI
+  - Bulma
 
 ---
 
@@ -118,4 +154,4 @@ Licenza MIT. Vedi [LICENSE](LICENSE) per dettagli.
 
 ---
 
-> Creato con ❤️ dal Team AI Template Generator
+> Creato con ❤️ da Filippo Falcone

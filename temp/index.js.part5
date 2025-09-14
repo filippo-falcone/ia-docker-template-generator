@@ -1,0 +1,235 @@
+// Complete the project configuration flow
+async function completeProjectFlow(preferences) {
+  // Select frontend technologies if needed
+  if (['frontend', 'fullstack'].includes(preferences.projectType)) {
+    await askFrontendPreferences(preferences);
+    
+    // If user went back to project type selection
+    if (!preferences.projectType) {
+      return false;
+    }
+  }
+  
+  // Select backend technologies if needed
+  if (['backend', 'fullstack'].includes(preferences.projectType)) {
+    await askBackendPreferences(preferences);
+    
+    // If user went back to project type selection
+    if (!preferences.projectType) {
+      return false;
+    }
+  }
+  
+  // Final confirmation of all preferences
+  console.log('\nProject Configuration Summary:');
+  console.log(`- Project Name: ${preferences.projectName}`);
+  console.log(`- Project Path: ${preferences.projectPath}`);
+  console.log(`- Project Type: ${preferences.projectType}`);
+  
+  if (preferences.frontend) {
+    console.log(`- Frontend: ${preferences.frontend} (${preferences.frontendFramework})`);
+    console.log(`- CSS Framework: ${preferences.cssFramework}`);
+  }
+  
+  if (preferences.backend) {
+    console.log(`- Backend: ${preferences.backend} (${preferences.backendFramework})`);
+  }
+  
+  const confirmResponse = await prompt([
+    {
+      type: 'list',
+      name: 'confirm',
+      message: 'Ready to generate your project?',
+      choices: [
+        { name: 'Yes, generate my project', value: 'generate' },
+        { name: 'No, modify configuration', value: 'modify' },
+        { name: 'Cancel', value: 'cancel' }
+      ]
+    }
+  ]);
+  
+  if (confirmResponse.confirm === 'cancel') {
+    console.log('Project generation cancelled.');
+    process.exit(0);
+  }
+  
+  if (confirmResponse.confirm === 'modify') {
+    // Reset project type to start flow again
+    preferences.projectType = null;
+    preferences.frontend = null;
+    preferences.frontendFramework = null;
+    preferences.cssFramework = null;
+    preferences.backend = null;
+    preferences.backendFramework = null;
+    return false;
+  }
+  
+  return true;
+}
+
+// Main project creation flow
+async function startProjectCreationFlow() {
+  // Store all preferences in this object
+  const preferences = {
+    projectName: null,
+    projectPath: null,
+    projectType: null,
+    frontend: null,
+    frontendFramework: null,
+    cssFramework: null,
+    backend: null,
+    backendFramework: null
+  };
+  
+  let completed = false;
+  
+  while (!completed) {
+    // Project name
+    while (!preferences.projectName) {
+      const { action } = await prompt([
+        {
+          type: 'list',
+          name: 'action',
+          message: 'What would you like to do?',
+          choices: [
+            { name: 'Create a new project', value: 'create' },
+            { name: EXIT_OPTION, value: EXIT_VALUE }
+          ]
+        }
+      ]);
+      
+      if (action === EXIT_VALUE) {
+        console.log('Exiting the template generator. Goodbye!');
+        process.exit(0);
+      }
+      
+      // Ask for project name
+      const nameResponse = await prompt([
+        {
+          type: 'input',
+          name: 'projectName',
+          message: 'Enter a name for your project:',
+          validate: (input) => input.trim() !== '' ? true : 'Project name is required',
+        },
+        {
+          type: 'list',
+          name: 'action',
+          message: 'Continue or go back?',
+          choices: [
+            { name: 'Continue', value: 'continue' },
+            { name: BACK_OPTION, value: BACK_VALUE }
+          ]
+        }
+      ]);
+      
+      if (nameResponse.action === BACK_VALUE) {
+        continue;
+      }
+      
+      preferences.projectName = nameResponse.projectName;
+    }
+    
+    // Project location
+    while (!preferences.projectPath) {
+      const homeDir = os.homedir();
+      const defaultPath = path.join(homeDir, 'Projects', preferences.projectName);
+      
+      const pathResponse = await prompt([
+        {
+          type: 'input',
+          name: 'projectPath',
+          message: 'Enter project path:',
+          default: defaultPath,
+          validate: (input) => input.trim() !== '' ? true : 'Project path is required',
+        },
+        {
+          type: 'list',
+          name: 'action',
+          message: 'Continue or go back?',
+          choices: [
+            { name: 'Continue', value: 'continue' },
+            { name: BACK_OPTION, value: BACK_VALUE }
+          ]
+        }
+      ]);
+      
+      if (pathResponse.action === BACK_VALUE) {
+        preferences.projectName = null; // Reset project name to go back
+        continue;
+      }
+      
+      preferences.projectPath = pathResponse.projectPath;
+    }
+    
+    // Project type
+    while (!preferences.projectType) {
+      const typeResponse = await prompt([
+        {
+          type: 'list',
+          name: 'projectType',
+          message: 'Select the project type:',
+          choices: [
+            { name: 'Frontend Only', value: 'frontend' },
+            { name: 'Backend Only', value: 'backend' },
+            { name: 'Full Stack', value: 'fullstack' },
+            { name: BACK_OPTION, value: BACK_VALUE }
+          ]
+        }
+      ]);
+      
+      if (typeResponse.projectType === BACK_VALUE) {
+        preferences.projectPath = null; // Reset path to go back
+        continue;
+      }
+      
+      preferences.projectType = typeResponse.projectType;
+    }
+    
+    // Complete the project preferences flow
+    const configComplete = await completeProjectFlow(preferences);
+    
+    if (configComplete) {
+      // Get API key for Hugging Face
+      const apiKey = await askApiKey();
+      
+      if (!apiKey) {
+        console.error('API key is required to generate project templates.');
+        process.exit(1);
+      }
+      
+      // Generate the project using Hugging Face API
+      console.log('Generating project template with AI...');
+      const generatedContent = await generateWithOpenAI(apiKey, preferences);
+      
+      if (generatedContent) {
+        // Create project files
+        await createProject(preferences, generatedContent);
+        completed = true;
+      } else {
+        console.error('Failed to generate project template.');
+        
+        const retryResponse = await prompt([
+          {
+            type: 'list',
+            name: 'retry',
+            message: 'Would you like to try again?',
+            choices: [
+              { name: 'Yes, try again', value: true },
+              { name: 'No, exit', value: false }
+            ]
+          }
+        ]);
+        
+        if (!retryResponse.retry) {
+          process.exit(1);
+        }
+      }
+    }
+  }
+}
+
+// Run the main function
+main().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});

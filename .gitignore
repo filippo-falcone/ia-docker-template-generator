@@ -12,9 +12,14 @@ logs
 .DS_Store
 Thumbs.db
 
-# Env
+# Environment variables (but keep example files)
 .env
-.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+# NOT .env.example - questo deve essere incluso nel repository
 
 # Build
 /dist
@@ -35,5 +40,23 @@ Thumbs.db
 /docker/*.log
 /docker/*.tmp
 
-# Output
+# Output directories
 ai-template-project/
+/output/
+/generated/
+
+# Editor specific
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Debug files
+npm-debug.log
+yarn-debug.log
+yarn-error.log

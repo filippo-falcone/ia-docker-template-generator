@@ -1,0 +1,136 @@
+// Technology choices for prompts
+const frontendOptions = [
+  { name: 'React', frameworks: ['React (Basic)', 'React + Vite', 'Next.js'] },
+  { name: 'Vue', frameworks: ['Vue 3', 'Vue + Vite', 'Nuxt.js'] },
+  { name: 'Angular', frameworks: ['Angular CLI', 'Angular + Standalone Components'] }
+];
+
+const backendOptions = [
+  { name: 'Node.js', frameworks: ['Express', 'NestJS', 'Fastify'] },
+  { name: 'Python', frameworks: ['Django', 'Flask', 'FastAPI'] },
+  { name: 'PHP', frameworks: ['Laravel', 'Symfony', 'Slim'] }
+];
+
+const cssFrameworks = ['None', 'Tailwind CSS', 'Bootstrap', 'Material UI', 'Bulma'];
+
+// Frontend technology selection
+async function askFrontendPreferences(preferences) {
+  // Frontend technology
+  while (!preferences.frontend) {
+    const frontendResponse = await prompt([
+      {
+        type: 'list',
+        name: 'frontend',
+        message: 'Select a frontend technology:',
+        choices: [
+          ...frontendOptions.map(opt => ({ name: opt.name, value: opt.name })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (frontendResponse.frontend === BACK_VALUE) {
+      preferences.projectType = null; // Go back to project type selection
+      return;
+    }
+    
+    preferences.frontend = frontendResponse.frontend;
+  }
+  
+  // Frontend framework
+  while (!preferences.frontendFramework) {
+    // Find frameworks for the selected frontend technology
+    const frameworks = frontendOptions.find(opt => opt.name === preferences.frontend)?.frameworks || [];
+    
+    const frameworkResponse = await prompt([
+      {
+        type: 'list',
+        name: 'frontendFramework',
+        message: `Select a ${preferences.frontend} framework:`,
+        choices: [
+          ...frameworks.map(fw => ({ name: fw, value: fw })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (frameworkResponse.frontendFramework === BACK_VALUE) {
+      preferences.frontend = null; // Go back to frontend selection
+      return;
+    }
+    
+    preferences.frontendFramework = frameworkResponse.frontendFramework;
+  }
+  
+  // CSS framework
+  while (!preferences.cssFramework) {
+    const cssResponse = await prompt([
+      {
+        type: 'list',
+        name: 'cssFramework',
+        message: 'Select a CSS framework:',
+        choices: [
+          ...cssFrameworks.map(css => ({ name: css, value: css })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (cssResponse.cssFramework === BACK_VALUE) {
+      preferences.frontendFramework = null; // Go back to framework selection
+      return;
+    }
+    
+    preferences.cssFramework = cssResponse.cssFramework;
+  }
+}
+
+// Backend technology selection
+async function askBackendPreferences(preferences) {
+  // Backend technology
+  while (!preferences.backend) {
+    const backendResponse = await prompt([
+      {
+        type: 'list',
+        name: 'backend',
+        message: 'Select a backend technology:',
+        choices: [
+          ...backendOptions.map(opt => ({ name: opt.name, value: opt.name })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (backendResponse.backend === BACK_VALUE) {
+      preferences.projectType = null; // Go back to project type selection
+      return;
+    }
+    
+    preferences.backend = backendResponse.backend;
+  }
+  
+  // Backend framework
+  while (!preferences.backendFramework) {
+    // Find frameworks for the selected backend technology
+    const frameworks = backendOptions.find(opt => opt.name === preferences.backend)?.frameworks || [];
+    
+    const frameworkResponse = await prompt([
+      {
+        type: 'list',
+        name: 'backendFramework',
+        message: `Select a ${preferences.backend} framework:`,
+        choices: [
+          ...frameworks.map(fw => ({ name: fw, value: fw })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (frameworkResponse.backendFramework === BACK_VALUE) {
+      preferences.backend = null; // Go back to backend selection
+      return;
+    }
+    
+    preferences.backendFramework = frameworkResponse.backendFramework;
+  }
+}

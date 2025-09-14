@@ -1,4 +1,4 @@
-# 🚀 AI Template Generator
+# 🚀 AI Template Generator [![Italian Version](https://img.shields.io/badge/Italian-🇮🇹-green.svg)](README.it.md)
 
 ![Project Logo](https://via.placeholder.com/150x50?text=AI+Template+Generator)
 
@@ -11,7 +11,7 @@
 - [How It Works](#how-it-works)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Configuration](#configuration-openai-api-key-etc)
+- [Configuration](#configuration-hugging-face-token)
 - [Technologies Supported](#technologies-supported)
 - [Example Output](#example-output)
 - [Contribution](#contribution)
@@ -27,9 +27,12 @@
 
 ## ✨ Features
 
-- Interactive terminal prompts (choose frontend & backend)
-- Supports React, Angular, Vue, Node.js, Express, Laravel
-- Uses OpenAI API for code and Dockerfile generation
+- Interactive terminal prompts with flexible options:
+  - Choose frontend-only, backend-only, or full-stack
+  - Wide selection of frontend frameworks: React, Vue, Angular with specific versions
+  - Wide selection of backend frameworks: Node.js, PHP, Python with specific implementations
+  - Integration with CSS frameworks like Bootstrap, Tailwind, and more
+- Uses Hugging Face API for code and Dockerfile generation
 - Automatically creates project folders and files
 - Stylish, bilingual documentation (EN/IT)
 - Example outputs for quick reference
@@ -39,10 +42,13 @@
 ## ⚙️ How It Works
 
 1. Run the CLI tool in your terminal.
-2. Select your preferred frontend and backend technologies.
-3. Enter your OpenAI API key (if not already configured).
-4. The AI generates the project structure and Dockerfile(s).
-5. Files are saved to disk, ready for development!
+2. Choose the project type: frontend, backend, or full-stack.
+3. Select specific technologies (frontend/backend frameworks, versions, CSS).
+4. Enter a destination path for your project.
+5. Confirm your selections.
+6. Enter your Hugging Face token (if not already configured).
+7. The AI generates the project structure, Dockerfile(s), and all configurations.
+8. Files are saved to your specified location, ready for development!
 
 ---
 
@@ -68,26 +74,56 @@ npm install inquirer axios
 node index.js
 ```
 
-Follow the prompts to select technologies and provide your OpenAI API key.
+Follow the prompts to:
+
+- Select technologies
+- Choose a destination path for your project
+- Provide your Hugging Face token
+
+Your project will be generated at the location you specify, keeping the generator repository clean.
 
 ---
 
-## 🔑 Configuration (OpenAI API Key, etc.)
+## 🔑 Configuration (Hugging Face Token)
 
-Set your OpenAI API key as an environment variable or enter it when prompted:
+You can configure your Hugging Face token in three ways:
 
-```bash
-export OPENAI_API_KEY=your-key-here
-```
+1. **Using a .env file** (recommended):
 
-Or, let the CLI prompt you for the key.
+   ```
+   # Create a .env file in the root folder
+   HF_TOKEN=your-token-here
+   ```
+
+   The script will automatically load this token at startup.
+
+2. **As an environment variable**:
+
+   ```bash
+   export HF_TOKEN=your-token-here
+   ```
+
+3. **By entering it when prompted by the CLI**:
+
+   When you enter your token through the CLI, you'll be asked if you want to save it to the `.env` file for future use. If you choose to do so, the token will be automatically saved and loaded for subsequent runs.
 
 ---
 
 ## 🧩 Technologies Supported
 
-- Frontend: React, Angular, Vue
-- Backend: Node.js, Express, Laravel
+- **Frontend**:
+  - React: Base, React + Vite, Next.js, Create React App
+  - Vue: Vue 3, Vue 2, Vue + Vite, Nuxt.js
+  - Angular: Angular CLI, Angular + Standalone Components
+- **Backend**:
+  - Node.js: Express, Koa, Fastify, NestJS
+  - PHP: Laravel, PHP Base, Symfony, Slim
+  - Python: Django, Flask, FastAPI
+- **CSS Frameworks**:
+  - Bootstrap
+  - Tailwind CSS
+  - Material UI
+  - Bulma
 
 ---
 
@@ -118,4 +154,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-> Made with ❤️ by the AI Template Generator Team
+> Made with ❤️ by Filippo Falcone

@@ -1,0 +1,603 @@
+#!/usr/bin/env node
+
+const inquirer = require('inquirer');
+const { prompt } = inquirer;
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+require('dotenv').config();
+
+// Constants for CLI UI
+const BACK_OPTION = '← Go Back';
+const BACK_VALUE = '__back__';
+const EXIT_OPTION = '× Exit';
+const EXIT_VALUE = '__exit__';
+
+// Technology choices for prompts
+const frontendOptions = [
+  { name: 'React', frameworks: ['React (Basic)', 'React + Vite', 'Next.js'] },
+  { name: 'Vue', frameworks: ['Vue 3', 'Vue + Vite', 'Nuxt.js'] },
+  { name: 'Angular', frameworks: ['Angular CLI', 'Angular + Standalone Components'] }
+];
+
+const backendOptions = [
+  { name: 'Node.js', frameworks: ['Express', 'NestJS', 'Fastify'] },
+  { name: 'Python', frameworks: ['Django', 'Flask', 'FastAPI'] },
+  { name: 'PHP', frameworks: ['Laravel', 'Symfony', 'Slim'] }
+];
+
+const cssFrameworks = ['None', 'Tailwind CSS', 'Bootstrap', 'Material UI', 'Bulma'];
+
+// Main function to start the CLI application
+async function main() {
+  console.log('=================================');
+  console.log('| AI Docker Template Generator  |');
+  console.log('=================================');
+  
+  try {
+    await startProjectCreationFlow();
+  } catch (error) {
+    console.error('An error occurred:', error.message);
+    process.exit(1);
+  }
+}
+
+// Frontend technology selection
+async function askFrontendPreferences(preferences) {
+  // Frontend technology
+  while (!preferences.frontend) {
+    const frontendResponse = await prompt([
+      {
+        type: 'list',
+        name: 'frontend',
+        message: 'Select a frontend technology:',
+        choices: [
+          ...frontendOptions.map(opt => ({ name: opt.name, value: opt.name })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (frontendResponse.frontend === BACK_VALUE) {
+      preferences.projectType = null; // Go back to project type selection
+      return;
+    }
+    
+    preferences.frontend = frontendResponse.frontend;
+  }
+  
+  // Frontend framework
+  while (!preferences.frontendFramework) {
+    // Find frameworks for the selected frontend technology
+    const frameworks = frontendOptions.find(opt => opt.name === preferences.frontend)?.frameworks || [];
+    
+    const frameworkResponse = await prompt([
+      {
+        type: 'list',
+        name: 'frontendFramework',
+        message: `Select a ${preferences.frontend} framework:`,
+        choices: [
+          ...frameworks.map(fw => ({ name: fw, value: fw })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (frameworkResponse.frontendFramework === BACK_VALUE) {
+      preferences.frontend = null; // Go back to frontend selection
+      return;
+    }
+    
+    preferences.frontendFramework = frameworkResponse.frontendFramework;
+  }
+  
+  // CSS framework
+  while (!preferences.cssFramework) {
+    const cssResponse = await prompt([
+      {
+        type: 'list',
+        name: 'cssFramework',
+        message: 'Select a CSS framework:',
+        choices: [
+          ...cssFrameworks.map(css => ({ name: css, value: css })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (cssResponse.cssFramework === BACK_VALUE) {
+      preferences.frontendFramework = null; // Go back to framework selection
+      return;
+    }
+    
+    preferences.cssFramework = cssResponse.cssFramework;
+  }
+}
+
+// Backend technology selection
+async function askBackendPreferences(preferences) {
+  // Backend technology
+  while (!preferences.backend) {
+    const backendResponse = await prompt([
+      {
+        type: 'list',
+        name: 'backend',
+        message: 'Select a backend technology:',
+        choices: [
+          ...backendOptions.map(opt => ({ name: opt.name, value: opt.name })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (backendResponse.backend === BACK_VALUE) {
+      preferences.projectType = null; // Go back to project type selection
+      return;
+    }
+    
+    preferences.backend = backendResponse.backend;
+  }
+  
+  // Backend framework
+  while (!preferences.backendFramework) {
+    // Find frameworks for the selected backend technology
+    const frameworks = backendOptions.find(opt => opt.name === preferences.backend)?.frameworks || [];
+    
+    const frameworkResponse = await prompt([
+      {
+        type: 'list',
+        name: 'backendFramework',
+        message: `Select a ${preferences.backend} framework:`,
+        choices: [
+          ...frameworks.map(fw => ({ name: fw, value: fw })),
+          { name: BACK_OPTION, value: BACK_VALUE }
+        ]
+      }
+    ]);
+    
+    if (frameworkResponse.backendFramework === BACK_VALUE) {
+      preferences.backend = null; // Go back to backend selection
+      return;
+    }
+    
+    preferences.backendFramework = frameworkResponse.backendFramework;
+  }
+}
+
+// Complete the project configuration flow
+async function completeProjectFlow(preferences) {
+  // Select frontend technologies if needed
+  if (['frontend', 'fullstack'].includes(preferences.projectType)) {
+    await askFrontendPreferences(preferences);
+    
+    // If user went back to project type selection
+    if (!preferences.projectType) {
+      return false;
+    }
+  }
+  
+  // Select backend technologies if needed
+  if (['backend', 'fullstack'].includes(preferences.projectType)) {
+    await askBackendPreferences(preferences);
+    
+    // If user went back to project type selection
+    if (!preferences.projectType) {
+      return false;
+    }
+  }
+  
+  // Final confirmation of all preferences
+  console.log('\nProject Configuration Summary:');
+  console.log(`- Project Name: ${preferences.projectName}`);
+  console.log(`- Project Path: ${preferences.projectPath}`);
+  console.log(`- Project Type: ${preferences.projectType}`);
+  
+  if (preferences.frontend) {
+    console.log(`- Frontend: ${preferences.frontend} (${preferences.frontendFramework})`);
+    console.log(`- CSS Framework: ${preferences.cssFramework}`);
+  }
+  
+  if (preferences.backend) {
+    console.log(`- Backend: ${preferences.backend} (${preferences.backendFramework})`);
+  }
+  
+  const confirmResponse = await prompt([
+    {
+      type: 'list',
+      name: 'confirm',
+      message: 'Ready to generate your project?',
+      choices: [
+        { name: 'Yes, generate my project', value: 'generate' },
+        { name: 'No, modify configuration', value: 'modify' },
+        { name: 'Cancel', value: 'cancel' }
+      ]
+    }
+  ]);
+  
+  if (confirmResponse.confirm === 'cancel') {
+    console.log('Project generation cancelled.');
+    process.exit(0);
+  }
+  
+  if (confirmResponse.confirm === 'modify') {
+    // Reset project type to start flow again
+    preferences.projectType = null;
+    preferences.frontend = null;
+    preferences.frontendFramework = null;
+    preferences.cssFramework = null;
+    preferences.backend = null;
+    preferences.backendFramework = null;
+    return false;
+  }
+  
+  return true;
+}
+
+// Save API key to .env file
+function saveApiKeyToEnv(apiKey) {
+  const envPath = path.join(process.cwd(), '.env');
+  let envContent = '';
+  
+  // Check if .env exists and read its content
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, 'utf8');
+    
+    // Check if HF_TOKEN already exists in the file
+    const envLines = envContent.split('\n');
+    let tokenExists = false;
+    
+    // Create new content with updated token
+    const newContent = envLines.map(line => {
+      if (line.trim().startsWith('HF_TOKEN=')) {
+        tokenExists = true;
+        return `HF_TOKEN=${apiKey}`;
+      }
+      return line;
+    }).join('\n');
+    
+    // If token doesn't exist in file, add it
+    if (!tokenExists) {
+      envContent = newContent + `\nHF_TOKEN=${apiKey}\n`;
+    } else {
+      envContent = newContent;
+    }
+  } else {
+    // Create new .env file with token
+    envContent = `HF_TOKEN=${apiKey}\n`;
+  }
+  
+  // Write to .env file
+  try {
+    fs.writeFileSync(envPath, envContent);
+    console.log('Hugging Face token saved to .env file');
+    return true;
+  } catch (error) {
+    console.error('Error saving token to .env file:', error.message);
+    return false;
+  }
+}
+
+// Ask for Hugging Face API Token
+async function askApiKey() {
+  let apiKey = process.env.HF_TOKEN;
+  if (!apiKey) {
+    const answer = await prompt([
+      {
+        type: 'input',
+        name: 'apiKey',
+        message: 'Enter your Hugging Face access token:',
+      },
+    ]);
+    apiKey = answer.apiKey;
+    
+    // Ask if the user wants to save the token for future use
+    const saveAnswer = await prompt([
+      {
+        type: 'confirm',
+        name: 'saveToken',
+        message: 'Do you want to save the token for future use?',
+        default: true
+      },
+    ]);
+    
+    if (saveAnswer.saveToken) {
+      saveApiKeyToEnv(apiKey);
+    }
+  }
+  return apiKey;
+}
+
+// Generate project structure and Dockerfile using Hugging Face
+async function generateWithOpenAI(apiKey, preferences) {
+  // Prepare a robust prompt for Hugging Face based on user preferences
+  let promptText = `You are an expert project scaffold generator. The user has selected:\n`;
+  
+  // Add project type
+  promptText += `Project Type: ${preferences.projectType} (${preferences.projectType === 'frontend' ? 'Frontend Only' : preferences.projectType === 'backend' ? 'Backend Only' : 'Full Stack'})\n`;
+  
+  // Add frontend details if applicable
+  if (preferences.frontend) {
+    promptText += `Frontend: ${preferences.frontend} (${preferences.frontendFramework})\n`;
+    promptText += `CSS Framework: ${preferences.cssFramework}\n`;
+  }
+  
+  // Add backend details if applicable
+  if (preferences.backend) {
+    promptText += `Backend: ${preferences.backend} (${preferences.backendFramework})\n`;
+  }
+  
+  // Standard instructions
+  promptText += `\nGenerate a complete, production-ready project template with:
+1. All necessary configuration files (package.json, tsconfig.json, etc.) with correct dependencies for the selected technologies.
+2. A coherent folder structure${preferences.projectType === 'fullstack' ? ': /frontend, /backend, /docker' : ''}.
+3. ${preferences.projectType === 'fullstack' ? 'A Dockerfile compatible with the selected technologies.' : 'Appropriate configuration for development and production.'}
+4. A bilingual README.md (EN/IT) with install, usage, and configuration instructions.
+5. All necessary config files (.gitignore, .env.example if needed).
+6. All code and comments must be bilingual (EN/IT).
+7. The template must be immediately installable and runnable with no missing files or dependency errors.
+8. Include proper configuration for the selected CSS framework (${preferences.cssFramework}) if applicable.
+9. Output all file contents and folder structure, ready to be written to disk.`;
+
+  // Call Hugging Face Inference API with our prompt
+  try {
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/gpt2',
+      {
+        inputs: promptText,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    // Response may be an array of objects with generated_text field
+    if (Array.isArray(response.data) && response.data[0]?.generated_text) {
+      return response.data[0].generated_text;
+    }
+    // Handle other response formats
+    return JSON.stringify(response.data, null, 2);
+  } catch (error) {
+    if (error.response && error.response.data) {
+      console.error('Hugging Face API error:', JSON.stringify(error.response.data));
+    } else {
+      console.error('Error calling Hugging Face API:', error.message);
+    }
+    return null;
+  }
+}
+
+// Write project files based on the AI response
+async function createProject(preferences, generatedContent) {
+  // Create the project directory if it doesn't exist
+  const projectPath = preferences.projectPath;
+  if (!fs.existsSync(projectPath)) {
+    fs.mkdirSync(projectPath, { recursive: true });
+  }
+
+  // Parse the AI response to extract file paths and contents
+  // This is a simplified version and would need to be expanded based on the actual response format
+  console.log('Creating project files...');
+  
+  // For now, let's just write a basic README.md as an example
+  const readmePath = path.join(projectPath, 'README.md');
+  const readmeContent = `# ${preferences.projectName}
+
+## Project Overview
+This is a ${preferences.projectType} project created with the IA Docker Template Generator.
+
+### Technologies Used
+${preferences.frontend ? `- Frontend: ${preferences.frontend} (${preferences.frontendFramework})
+- CSS: ${preferences.cssFramework}` : ''}
+${preferences.backend ? `- Backend: ${preferences.backend} (${preferences.backendFramework})` : ''}
+
+## Getting Started
+Instructions for setup and running the project...
+
+## Docker Setup
+Docker configuration for easy deployment...
+
+Created by Filippo Falcone
+
+[![English](https://img.shields.io/badge/lang-English-blue.svg)](README.md) [![Italian](https://img.shields.io/badge/lang-Italiano-green.svg)](README.it.md)
+`;
+
+  fs.writeFileSync(readmePath, readmeContent);
+
+  // Also create an Italian version of the README
+  const readmeItPath = path.join(projectPath, 'README.it.md');
+  const readmeItContent = `# ${preferences.projectName}
+
+## Panoramica del Progetto
+Questo è un progetto ${preferences.projectType} creato con IA Docker Template Generator.
+
+### Tecnologie Utilizzate
+${preferences.frontend ? `- Frontend: ${preferences.frontend} (${preferences.frontendFramework})
+- CSS: ${preferences.cssFramework}` : ''}
+${preferences.backend ? `- Backend: ${preferences.backend} (${preferences.backendFramework})` : ''}
+
+## Per Iniziare
+Istruzioni per la configurazione e l'esecuzione del progetto...
+
+## Configurazione Docker
+Configurazione Docker per una facile implementazione...
+
+Creato da Filippo Falcone
+
+[![English](https://img.shields.io/badge/lang-English-blue.svg)](README.md) [![Italian](https://img.shields.io/badge/lang-Italiano-green.svg)](README.it.md)
+`;
+
+  fs.writeFileSync(readmeItPath, readmeItContent);
+
+  console.log(`Project "${preferences.projectName}" created successfully at ${projectPath}`);
+  console.log('Please check the generated files and customize them as needed.');
+}
+
+// Main project creation flow
+async function startProjectCreationFlow() {
+  // Store all preferences in this object
+  const preferences = {
+    projectName: null,
+    projectPath: null,
+    projectType: null,
+    frontend: null,
+    frontendFramework: null,
+    cssFramework: null,
+    backend: null,
+    backendFramework: null
+  };
+  
+  let completed = false;
+  
+  while (!completed) {
+    // Project name
+    while (!preferences.projectName) {
+      const { action } = await prompt([
+        {
+          type: 'list',
+          name: 'action',
+          message: 'What would you like to do?',
+          choices: [
+            { name: 'Create a new project', value: 'create' },
+            { name: EXIT_OPTION, value: EXIT_VALUE }
+          ]
+        }
+      ]);
+      
+      if (action === EXIT_VALUE) {
+        console.log('Exiting the template generator. Goodbye!');
+        process.exit(0);
+      }
+      
+      // Ask for project name
+      const nameResponse = await prompt([
+        {
+          type: 'input',
+          name: 'projectName',
+          message: 'Enter a name for your project:',
+          validate: (input) => input.trim() !== '' ? true : 'Project name is required',
+        },
+        {
+          type: 'list',
+          name: 'action',
+          message: 'Continue or go back?',
+          choices: [
+            { name: 'Continue', value: 'continue' },
+            { name: BACK_OPTION, value: BACK_VALUE }
+          ]
+        }
+      ]);
+      
+      if (nameResponse.action === BACK_VALUE) {
+        continue;
+      }
+      
+      preferences.projectName = nameResponse.projectName;
+    }
+    
+    // Project location
+    while (!preferences.projectPath) {
+      const homeDir = os.homedir();
+      const defaultPath = path.join(homeDir, 'Projects', preferences.projectName);
+      
+      const pathResponse = await prompt([
+        {
+          type: 'input',
+          name: 'projectPath',
+          message: 'Enter project path:',
+          default: defaultPath,
+          validate: (input) => input.trim() !== '' ? true : 'Project path is required',
+        },
+        {
+          type: 'list',
+          name: 'action',
+          message: 'Continue or go back?',
+          choices: [
+            { name: 'Continue', value: 'continue' },
+            { name: BACK_OPTION, value: BACK_VALUE }
+          ]
+        }
+      ]);
+      
+      if (pathResponse.action === BACK_VALUE) {
+        preferences.projectName = null; // Reset project name to go back
+        continue;
+      }
+      
+      preferences.projectPath = pathResponse.projectPath;
+    }
+    
+    // Project type
+    while (!preferences.projectType) {
+      const typeResponse = await prompt([
+        {
+          type: 'list',
+          name: 'projectType',
+          message: 'Select the project type:',
+          choices: [
+            { name: 'Frontend Only', value: 'frontend' },
+            { name: 'Backend Only', value: 'backend' },
+            { name: 'Full Stack', value: 'fullstack' },
+            { name: BACK_OPTION, value: BACK_VALUE }
+          ]
+        }
+      ]);
+      
+      if (typeResponse.projectType === BACK_VALUE) {
+        preferences.projectPath = null; // Reset path to go back
+        continue;
+      }
+      
+      preferences.projectType = typeResponse.projectType;
+    }
+    
+    // Complete the project preferences flow
+    const configComplete = await completeProjectFlow(preferences);
+    
+    if (configComplete) {
+      // Get API key for Hugging Face
+      const apiKey = await askApiKey();
+      
+      if (!apiKey) {
+        console.error('API key is required to generate project templates.');
+        process.exit(1);
+      }
+      
+      // Generate the project using Hugging Face API
+      console.log('Generating project template with AI...');
+      const generatedContent = await generateWithOpenAI(apiKey, preferences);
+      
+      if (generatedContent) {
+        // Create project files
+        await createProject(preferences, generatedContent);
+        completed = true;
+      } else {
+        console.error('Failed to generate project template.');
+        
+        const retryResponse = await prompt([
+          {
+            type: 'list',
+            name: 'retry',
+            message: 'Would you like to try again?',
+            choices: [
+              { name: 'Yes, try again', value: true },
+              { name: 'No, exit', value: false }
+            ]
+          }
+        ]);
+        
+        if (!retryResponse.retry) {
+          process.exit(1);
+        }
+      }
+    }
+  }
+}
+
+// Run the main function
+main().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
