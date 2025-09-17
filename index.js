@@ -420,7 +420,11 @@ ${JSON.stringify(fileList, null, 2)}
 **CRITICAL Instructions:**
 1.  **Content:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add any explanations, comments, or markdown wrappers.
 2.  **NO MARKDOWN FORMATTING:** Do NOT wrap the output in markdown code blocks. Do NOT include markdown formatting like json, javascript, html, css, yaml, dockerfile blocks. The output must be the raw file content that can be directly written to disk.
-3.  **Contextual Accuracy:** Use the "Full Project Structure for Context" to ensure all paths in the generated code (e.g., in Dockerfiles, \`docker-compose.yml\`, \`package.json\`, import statements) are correct and consistent with the provided file list.
+3.  **STRICT FILE REFERENCE VALIDATION:** NEVER reference files that don't exist in the provided project structure. This applies to ALL file types:
+    - Images, assets, CSS files, JS files, components, etc.
+    - Import statements, require statements, src attributes, href attributes
+    - If a file is not explicitly listed in the project structure, DO NOT reference it
+4.  **Contextual Accuracy:** Use the "Full Project Structure for Context" to ensure all paths in the generated code (e.g., in Dockerfiles, \`docker-compose.yml\`, \`package.json\`, import statements) are correct and consistent with the provided file list.
 3.  **Bilingual:** All comments and user-facing text (like in a README.md) must be bilingual (EN/IT).
 4.  **README.md Specifics:** If generating the \`README.md\`, it MUST be detailed and specific to the project stack. It MUST include:
     - A "Prerequisites" section listing tools the user must have installed globally (e.g., Node.js, Docker, Composer for PHP projects).
@@ -475,6 +479,15 @@ ${JSON.stringify(fileList, null, 2)}
       COPY composer.json composer.lock ./
       RUN composer install --no-interaction --no-dev --optimize-autoloader
       \`\`\`
+11. **UNIVERSAL FILE REFERENCE RULE:** For ANY file type (Vue, React, HTML, CSS, etc.):
+    - Do NOT reference images, assets, or files that are not in the provided file structure
+    - Do NOT use import/require statements for files that don't exist in the file list
+    - Do NOT reference CSS files, JS files, or any assets that aren't explicitly listed
+    - If you need to reference an asset in Vue/React components, either:
+      * Create placeholder content without external references
+      * Use inline styles instead of external CSS files
+      * Use text placeholders instead of images
+    - Example: Instead of \`src="./assets/logo.png"\`, use \`<!-- Logo placeholder -->\` or remove the image entirely
 
 **Your output must be ONLY the raw file content for \`${filePath}\`. No markdown, no explanations, no code block wrappers - just the pure file content.**`;
 
