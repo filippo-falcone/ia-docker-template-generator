@@ -400,8 +400,8 @@ User selections:
 }
 
 // Generate content for a single file using Google Gemini (Developer Role)
-async function generateFileContent(apiKey, preferences, filePath) {
-  let promptText = `You are an expert software developer. Your task is to generate the complete, production-ready code for the specified file path, based on the project's technology stack.
+async function generateFileContent(apiKey, preferences, filePath, fileList) {
+  let promptText = `You are an expert software developer. Your task is to generate the complete, production-ready code for a specific file, using the entire project structure for context.
 
 **Project Stack:**
 - Project Type: ${preferences.projectType}
@@ -410,18 +410,73 @@ async function generateFileContent(apiKey, preferences, filePath) {
 - Backend: ${preferences.backend || 'N/A'} (${preferences.backendFramework || 'N/A'})
 - Project Name: ${preferences.projectName}
 
+**Full Project Structure for Context:**
+\`\`\`json
+${JSON.stringify(fileList, null, 2)}
+\`\`\`
+
 **File to Generate:** \`${filePath}\`
 
-**Instructions:**
-1.  **Content:** Generate only the raw code/text for this specific file. Do not add any explanations, comments, or markdown wrappers.
-2.  **Completeness:** The code must be complete and immediately usable.
-3.  **Paths:** All paths within the code (e.g., in a Dockerfile, package.json, or import statement) must be correct and relative to the project root.
-4.  **Bilingual:** All comments and user-facing text (like in a README.md) must be bilingual (EN/IT).
-5.  **README.md Specifics:** If generating the \`README.md\`, it MUST be detailed and specific to the project stack, including sections for "Project Overview", "Prerequisites", "Installation & Setup" (with exact commands like \`docker-compose up --build\`), "Project Structure", and "Available Scripts".
-6.  **.gitignore:** If generating the \`.gitignore\`, it must be comprehensive for the chosen technologies (e.g., include \`node_modules\`, \`vendor\`, \`.env\`).
-7.  **package.json:** If generating a \`package.json\`, include relevant scripts (\`dev\`, \`start\`, \`build\`) and correct, up-to-date dependencies.
+**CRITICAL Instructions:**
+1.  **Content:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add any explanations, comments, or markdown wrappers.
+2.  **NO MARKDOWN FORMATTING:** Do NOT wrap the output in markdown code blocks. Do NOT include markdown formatting like json, javascript, html, css, yaml, dockerfile blocks. The output must be the raw file content that can be directly written to disk.
+3.  **Contextual Accuracy:** Use the "Full Project Structure for Context" to ensure all paths in the generated code (e.g., in Dockerfiles, \`docker-compose.yml\`, \`package.json\`, import statements) are correct and consistent with the provided file list.
+3.  **Bilingual:** All comments and user-facing text (like in a README.md) must be bilingual (EN/IT).
+4.  **README.md Specifics:** If generating the \`README.md\`, it MUST be detailed and specific to the project stack. It MUST include:
+    - A "Prerequisites" section listing tools the user must have installed globally (e.g., Node.js, Docker, Composer for PHP projects).
+    - An "Installation & Setup" section with the EXACT commands to run the project (e.g., \`docker-compose up --build\`).
+5.  **.gitignore:** If generating the \`.gitignore\`, it must be comprehensive for the chosen technologies (e.g., include \`node_modules\`, \`vendor\`, \`.env\`).
+6.  **Dependencies:** All dependencies in configuration files like \`package.json\` or \`composer.json\` must be correct and up-to-date.
+7.  **Dockerfile Specifics:** When generating a Dockerfile, pay close attention to the build context and multi-stage builds:
+    - For multi-stage builds (with multiple \`FROM\` statements), you MUST name ALL build stages (e.g., \`FROM node:lts-alpine AS builder\`) and correctly reference them in \`COPY --from=...\` commands.
+    - Paths in \`COPY\` commands must be relative to the build context. For example, if \`docker-compose.yml\` defines \`build: ./frontend\`, then inside \`frontend/Dockerfile\`, use \`COPY package.json ./\`, NOT \`COPY frontend/package.json ./\`.
+    - Never reference undefined stage names in \`COPY --from=\` commands.
+    - **CRITICAL FILE EXISTENCE CHECK:** ONLY copy files that actually exist in the project structure. Before adding any \`COPY\` command, verify that the source file exists in the provided file list. For example:
+      * If \`package-lock.json\` is NOT in the file list, do NOT include \`COPY package-lock.json ./\` in the Dockerfile
+      * If \`yarn.lock\` is NOT in the file list, do NOT include \`COPY yarn.lock ./\` in the Dockerfile
+      * If \`composer.lock\` is NOT in the file list, do NOT include \`COPY composer.lock ./\` in the Dockerfile
+      * If \`nginx.conf\` is NOT in the file list, do NOT include any \`COPY nginx.conf\` commands in the Dockerfile
+      * Only copy files that are explicitly listed in the "Full Project Structure for Context"
+      * For Node.js projects: If \`package-lock.json\` is not in the file list, use \`RUN npm install\` instead of \`RUN npm ci\`
+      * For Nginx configurations: If custom nginx config files are not in the file list, use the default Nginx configuration instead
+    - **GENERAL RULE:** Every single file referenced in any COPY command MUST exist in the "Full Project Structure for Context" list. If it doesn't exist in the list, DO NOT reference it in the Dockerfile.
+8.  **FILE VALIDATION EXAMPLES:** Before writing any COPY command, ask yourself:
+    - Does \`package-lock.json\` exist in the file list? If NO → do NOT copy it, use \`npm install\` instead of \`npm ci\`
+    - Does \`default.conf\` or \`nginx.conf\` exist in the file list? If NO → do NOT copy it, use default nginx config
+    - Does \`composer.lock\` exist in the file list? If NO → do NOT copy it
+    - ONLY copy files that are EXPLICITLY listed in the file structure provided above
+9.  **DOCKERFILE EXAMPLE:** For a Node.js frontend without package-lock.json:
+    \`\`\`
+    FROM node:lts-alpine AS builder
+    WORKDIR /app
+    COPY package.json ./
+    RUN npm install
+    COPY . .
+    RUN npm run build
+    
+    FROM nginx:alpine
+    COPY --from=builder /app/dist /usr/share/nginx/html
+    EXPOSE 80
+    CMD ["nginx", "-g", "daemon off;"]
+    \`\`\`
+    Notice: NO package-lock.json copy, NO nginx config copy - only existing files!
+10. **PHP/COMPOSER SPECIFICS:** For PHP Dockerfiles using Composer:
+    - ALWAYS install Composer before using it: \`RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer\`
+    - Or use official Composer image: \`COPY --from=composer:latest /usr/bin/composer /usr/bin/composer\`
+    - Install system dependencies that Laravel/PHP projects typically need
+    - Example PHP Dockerfile structure:
+      \`\`\`
+      FROM php:8.1-fpm
+      RUN apt-get update && apt-get install -y \\
+          zip unzip git curl libpng-dev libonig-dev libxml2-dev
+      RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+      COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+      WORKDIR /var/www/html
+      COPY composer.json composer.lock ./
+      RUN composer install --no-interaction --no-dev --optimize-autoloader
+      \`\`\`
 
-**Your output must be ONLY the raw file content.**`;
+**Your output must be ONLY the raw file content for \`${filePath}\`. No markdown, no explanations, no code block wrappers - just the pure file content.**`;
 
   // No spinner here as it will be managed by the calling function in a loop
   try {
@@ -457,7 +512,7 @@ async function createProject(apiKey, preferences) {
   // 2. Generate content for each file
   for (const filePath of fileList) {
     spinner.text = `Generating content for: ${chalk.yellow(filePath)}`;
-    const content = await generateFileContent(apiKey, preferences, filePath);
+    const content = await generateFileContent(apiKey, preferences, filePath, fileList);
 
     if (content !== null) {
       const fullPath = path.join(projectPath, filePath);
