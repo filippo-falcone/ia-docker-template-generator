@@ -21,7 +21,7 @@
 
 ## 🧠 Panoramica
 
-**Generatore di Template AI** è uno strumento CLI avanzato che ti aiuta a creare progetti web moderni utilizzando le tue tecnologie frontend e backend preferite. Grazie a OpenAI, genera strutture di progetto e Dockerfile su misura, rendendo la configurazione semplice e pronta per la produzione.
+**Generatore di Template AI** è uno strumento CLI avanzato che ti aiuta a creare progetti web moderni utilizzando le tue tecnologie frontend e backend preferite. Grazie a Google Gemini, genera strutture di progetto e Dockerfile su misura, rendendo la configurazione semplice e pronta per la produzione.
 
 ---
 
@@ -32,7 +32,7 @@
   - Ampia scelta di framework frontend: React, Vue, Angular con versioni specifiche
   - Ampia scelta di framework backend: Node.js, PHP, Python con implementazioni specifiche
   - Integrazione con framework CSS come Bootstrap, Tailwind e altri
-- Utilizza l'API di Hugging Face per generare codice e Dockerfile
+- Utilizza l'API di Google Gemini per generare codice e Dockerfile
 - Crea automaticamente cartelle e file di progetto
 - Documentazione elegante e bilingue (EN/IT)
 - Esempi di output per riferimento rapido
@@ -46,7 +46,7 @@
 3. Seleziona le tecnologie specifiche (framework frontend/backend, versioni, CSS).
 4. Inserisci il percorso di destinazione per il tuo progetto.
 5. Conferma le tue scelte.
-6. Inserisci il tuo token Hugging Face (se non già configurato).
+6. Inserisci il tuo token Google Gemini (se non già configurato).
 7. L'AI genera la struttura del progetto, Dockerfile e tutte le configurazioni.
 8. I file vengono salvati nel percorso specificato, pronti per lo sviluppo!
 
@@ -78,21 +78,21 @@ Segui i prompt per:
 
 - Selezionare le tecnologie
 - Scegliere un percorso di destinazione per il tuo progetto
-- Fornire il tuo token Hugging Face
+- Fornire il tuo token Google Gemini
 
 Il tuo progetto sarà generato nel percorso che specifichi, mantenendo pulita la repository del generatore.
 
 ---
 
-## 🔑 Configurazione (Token Hugging Face)
+## 🔑 Configurazione (Token Google Gemini)
 
-Puoi configurare il tuo token Hugging Face in tre modi:
+Puoi configurare il tuo token Google Gemini in tre modi:
 
 1. **Usando un file .env** (consigliato):
 
    ```
    # Crea un file .env nella cartella principale
-   HF_TOKEN=il-tuo-token-qui
+   GEMINI_TOKEN=il-tuo-token-qui
    ```
 
    Lo script caricherà automaticamente questo token all'avvio.
@@ -100,7 +100,7 @@ Puoi configurare il tuo token Hugging Face in tre modi:
 2. **Come variabile d'ambiente**:
 
    ```bash
-   export HF_TOKEN=il-tuo-token-qui
+   export GEMINI_TOKEN=il-tuo-token-qui
    ```
 
 3. **Inserendolo quando richiesto dalla CLI**:
