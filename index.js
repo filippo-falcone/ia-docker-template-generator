@@ -357,6 +357,7 @@ User selections:
     - For 'fullstack' projects, use '/frontend' and '/backend' subdirectories.
     - Include all necessary configuration files (package.json, Dockerfile, docker-compose.yml, .gitignore, .env.example, etc.).
     - Include basic source files (e.g., index.js, App.vue, main.py).
+    - **NEVER include auto-generated files:** Do NOT include package-lock.json, yarn.lock, composer.lock, or any other dependency lock files as these should be generated automatically by package managers.
 3.  **Example JSON Array Output:**
     [
       "frontend/Dockerfile",
@@ -468,6 +469,8 @@ ${JSON.stringify(fileList, null, 2)}
     - ALWAYS install Composer before using it: \`RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer\`
     - Or use official Composer image: \`COPY --from=composer:latest /usr/bin/composer /usr/bin/composer\`
     - Install system dependencies that Laravel/PHP projects typically need
+    - **IMPORTANT:** NEVER copy composer.lock in COPY commands. Only copy composer.json and let Composer generate the lock file automatically.
+    - For Laravel projects, use --no-scripts flag to avoid errors when artisan is not yet available: \`composer install --no-interaction --no-dev --optimize-autoloader --no-scripts\`
     - Example PHP Dockerfile structure:
       \`\`\`
       FROM php:8.1-fpm
@@ -476,8 +479,9 @@ ${JSON.stringify(fileList, null, 2)}
       RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
       COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
       WORKDIR /var/www/html
-      COPY composer.json composer.lock ./
-      RUN composer install --no-interaction --no-dev --optimize-autoloader
+      COPY composer.json ./
+      RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
+      COPY . .
       \`\`\`
 11. **UNIVERSAL FILE REFERENCE RULE:** For ANY file type (Vue, React, HTML, CSS, etc.):
     - Do NOT reference images, assets, or files that are not in the provided file structure
