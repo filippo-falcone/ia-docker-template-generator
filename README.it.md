@@ -63,7 +63,7 @@ cd ai-template-generator
 npm init -y
 
 # Installa le dipendenze necessarie
-npm install inquirer axios
+npm install @google/generative-ai chalk dotenv inquirer ora
 ```
 
 ---
