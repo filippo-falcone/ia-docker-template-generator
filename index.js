@@ -353,11 +353,30 @@ User selections:
 
 **Instructions:**
 1.  **Output Format:** Your response MUST be a single, raw, valid JSON array. Do not include any other text, explanations, or markdown.
-2.  **Structure:**
+2.  **COMPLETE FRAMEWORK STRUCTURE:** Generate the FULL project structure as if created by the framework's official CLI tools:
+    - **Vue.js projects:** Include the complete structure like \`npm create vue@latest\` would create:
+      * src/components/, src/views/, src/router/, src/stores/, src/assets/
+      * public/ directory with index.html, favicon.ico
+      * Multiple .vue components (App.vue, HelloWorld.vue, WelcomeView.vue, AboutView.vue)
+      * Router configuration, store setup, main.js with proper imports
+      * CSS files, configuration files (vite.config.js, etc.)
+    - **Laravel projects:** Include the complete structure like \`composer create-project laravel/laravel\` would create:
+      * app/Http/Controllers/, app/Models/, database/migrations/, resources/views/
+      * routes/web.php, routes/api.php
+      * Multiple PHP files (User.php model, controllers, middleware)
+      * Blade templates, Laravel configuration files
+      * artisan, bootstrap/, config/, storage/, tests/ directories
+    - **React projects:** Include complete structure with components, hooks, styles
+    - **NOT just minimal files:** Don't create only App.vue or a single controller - create a realistic, working project
+3.  **Structure Organization:**
     - For 'fullstack' projects, use '/frontend' and '/backend' subdirectories.
     - Include all necessary configuration files (package.json, Dockerfile, docker-compose.yml, .gitignore, .env.example, etc.).
-    - Include basic source files (e.g., index.js, App.vue, main.py).
     - **NEVER include auto-generated files:** Do NOT include package-lock.json, yarn.lock, composer.lock, or any other dependency lock files as these should be generated automatically by package managers.
+4.  **Framework-Specific Requirements:**
+    - **Vue.js + Vite:** Include vite.config.js, multiple components, router setup, store (Pinia), proper src/ structure
+    - **Laravel:** Include proper MVC structure, multiple models/controllers, blade templates, routing, middleware
+    - **React:** Include components/, hooks/, utils/, proper JSX structure
+    - **Node.js/Express:** Include routes/, middleware/, controllers/, proper Express app structure
 3.  **Example JSON Array Output:**
     [
       "frontend/Dockerfile",
@@ -423,6 +442,17 @@ ${JSON.stringify(fileList, null, 2)}
     - For Node.js projects: Use correct npm packages only
     - NEVER mix technology packages (don't use .NET packages in PHP, Python packages in Node.js, etc.)
     - Use standard Laravel packages: laravel/framework, phpunit/phpunit, fakerphp/faker, etc.
+
+**FRAMEWORK-SPECIFIC CONTENT REQUIREMENTS:**
+    - **Vue.js Components:** Create REALISTIC Vue.js components with proper composition API, reactive data, computed properties, and methods. NOT just "Hello World" but actual framework showcases
+    - **Laravel Files:** Generate REAL Laravel code - proper controllers with multiple methods, models with relationships, blade templates with layouts, routing with multiple routes
+    - **Main/Index Files:** For App.vue, create a proper Vue app with navigation, multiple views, and framework features. For Laravel welcome page, create the classic Laravel welcome with features showcase
+    - **Router/Navigation:** Generate actual routing systems - Vue Router with multiple routes, Laravel routes with resource controllers
+    - **Styling:** Use the selected CSS framework properly (Bootstrap classes, Tailwind utilities, etc.) with realistic layouts
+    - **Database:** For Laravel, include proper migrations, seeders, and model relationships
+    - **API Routes:** For fullstack projects, create matching API endpoints and frontend calls
+    - **NO MINIMAL CONTENT:** Avoid single-line components or empty controllers. Create content that demonstrates the framework's capabilities
+
 1.  **Content:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add any explanations, comments, or markdown wrappers.
 2.  **NO MARKDOWN FORMATTING:** Do NOT wrap the output in markdown code blocks. Do NOT include markdown formatting like json, javascript, html, css, yaml, dockerfile blocks. The output must be the raw file content that can be directly written to disk.
 3.  **STRICT FILE REFERENCE VALIDATION:** NEVER reference files that don't exist in the provided project structure. This applies to ALL file types:
@@ -490,7 +520,22 @@ ${JSON.stringify(fileList, null, 2)}
       RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
       COPY . .
       \`\`\`
-11. **UNIVERSAL FILE REFERENCE RULE:** For ANY file type (Vue, React, HTML, CSS, etc.):
+11. **DOCKER COMPOSE VOLUME MOUNT CRITICAL WARNING:** For backend services (especially PHP/Laravel):
+    - **NEVER mount the entire backend directory** as a volume in docker-compose.yml because it overwrites the vendor directory created during build
+    - **WRONG:** \`volumes: - ./backend:/var/www/html\` (this overwrites vendor folder and breaks dependencies)
+    - **CORRECT for development:** Either:
+      * Remove volume mounts entirely and rebuild when code changes: \`docker compose up --build\`
+      * Or use specific file mounts that exclude vendor: \`volumes: - ./backend/app:/var/www/html/app\`
+      * Or add a volume for vendor persistence: 
+        \`\`\`
+        volumes:
+          - ./backend:/var/www/html
+          - vendor_data:/var/www/html/vendor
+        \`\`\`
+        And add vendor_data to the volumes section at the bottom
+    - **PRODUCTION:** Never use volume mounts in production, let the build process handle everything
+    - **Laravel services must expose port 8000** and use correct CMD: \`CMD php artisan serve --host=0.0.0.0 --port=8000\`
+12. **UNIVERSAL FILE REFERENCE RULE:** For ANY file type (Vue, React, HTML, CSS, etc.):
     - Do NOT reference images, assets, or files that are not in the provided file structure
     - Do NOT use import/require statements for files that don't exist in the file list
     - Do NOT reference CSS files, JS files, or any assets that aren't explicitly listed
