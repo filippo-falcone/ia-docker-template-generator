@@ -418,7 +418,11 @@ ${JSON.stringify(fileList, null, 2)}
 
 **File to Generate:** \`${filePath}\`
 
-**CRITICAL Instructions:**
+**CRITICAL PACKAGE NAMING:**
+    - For PHP/Laravel projects: Use correct PHP packages only (e.g., "phpunit/phpunit" NOT "nunit/framework")
+    - For Node.js projects: Use correct npm packages only
+    - NEVER mix technology packages (don't use .NET packages in PHP, Python packages in Node.js, etc.)
+    - Use standard Laravel packages: laravel/framework, phpunit/phpunit, fakerphp/faker, etc.
 1.  **Content:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add any explanations, comments, or markdown wrappers.
 2.  **NO MARKDOWN FORMATTING:** Do NOT wrap the output in markdown code blocks. Do NOT include markdown formatting like json, javascript, html, css, yaml, dockerfile blocks. The output must be the raw file content that can be directly written to disk.
 3.  **STRICT FILE REFERENCE VALIDATION:** NEVER reference files that don't exist in the provided project structure. This applies to ALL file types:
@@ -432,6 +436,9 @@ ${JSON.stringify(fileList, null, 2)}
     - An "Installation & Setup" section with the EXACT commands to run the project (e.g., \`docker-compose up --build\`).
 5.  **.gitignore:** If generating the \`.gitignore\`, it must be comprehensive for the chosen technologies (e.g., include \`node_modules\`, \`vendor\`, \`.env\`).
 6.  **Dependencies:** All dependencies in configuration files like \`package.json\` or \`composer.json\` must be correct and up-to-date.
+    - For PHP projects: Use ONLY PHP packages (phpunit/phpunit, laravel/framework, guzzlehttp/guzzle, etc.)
+    - For Node.js projects: Use ONLY npm packages
+    - NEVER mix technologies: No .NET packages in PHP, no Python packages in Node.js, etc.
 7.  **Dockerfile Specifics:** When generating a Dockerfile, pay close attention to the build context and multi-stage builds:
     - For multi-stage builds (with multiple \`FROM\` statements), you MUST name ALL build stages (e.g., \`FROM node:lts-alpine AS builder\`) and correctly reference them in \`COPY --from=...\` commands.
     - Paths in \`COPY\` commands must be relative to the build context. For example, if \`docker-compose.yml\` defines \`build: ./frontend\`, then inside \`frontend/Dockerfile\`, use \`COPY package.json ./\`, NOT \`COPY frontend/package.json ./\`.
