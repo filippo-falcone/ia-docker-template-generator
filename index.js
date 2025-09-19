@@ -377,17 +377,37 @@ User selections:
     - **Laravel:** Include proper MVC structure, multiple models/controllers, blade templates, routing, middleware
     - **React:** Include components/, hooks/, utils/, proper JSX structure
     - **Node.js/Express:** Include routes/, middleware/, controllers/, proper Express app structure
-3.  **Example JSON Array Output:**
+5.  **MANDATORY DOCKER FILES:** For fullstack projects, you MUST ALWAYS include:
+    - \`docker-compose.yml\` in the root directory (REQUIRED for fullstack projects)
+    - \`frontend/Dockerfile\` (REQUIRED for frontend containerization)
+    - \`backend/Dockerfile\` (REQUIRED for backend containerization)
+    - These files are NOT optional - they are essential for the project to work as intended
+6.  **Example JSON Array Output for Vue+Laravel Fullstack:**
     [
-      "frontend/Dockerfile",
-      "frontend/package.json",
-      "frontend/src/index.js",
-      "backend/Dockerfile",
-      "backend/package.json",
-      "backend/server.js",
       "docker-compose.yml",
       ".gitignore",
-      "README.md"
+      ".env.example",
+      "README.md",
+      "frontend/Dockerfile",
+      "frontend/package.json",
+      "frontend/vite.config.js",
+      "frontend/index.html",
+      "frontend/src/main.js",
+      "frontend/src/App.vue",
+      "frontend/src/components/HelloWorld.vue",
+      "frontend/src/router/index.js",
+      "frontend/src/views/HomeView.vue",
+      "frontend/src/views/AboutView.vue",
+      "backend/Dockerfile",
+      "backend/.env.example",
+      "backend/composer.json",
+      "backend/artisan",
+      "backend/app/Http/Controllers/Controller.php",
+      "backend/app/Models/User.php",
+      "backend/routes/web.php",
+      "backend/routes/api.php",
+      "backend/resources/views/welcome.blade.php",
+      "backend/database/migrations/0001_01_01_000000_create_users_table.php"
     ]`;
 
   const spinner = ora('Calling AI Architect to design file structure...').start();
@@ -437,115 +457,87 @@ ${JSON.stringify(fileList, null, 2)}
 
 **File to Generate:** \`${filePath}\`
 
-**CRITICAL PACKAGE NAMING:**
-    - For PHP/Laravel projects: Use correct PHP packages only (e.g., "phpunit/phpunit" NOT "nunit/framework")
-    - For Node.js projects: Use correct npm packages only
-    - NEVER mix technology packages (don't use .NET packages in PHP, Python packages in Node.js, etc.)
-    - Use standard Laravel packages: laravel/framework, phpunit/phpunit, fakerphp/faker, etc.
+**TECHNOLOGY CONSISTENCY RULES:**
+- **Frontend Framework:** ${preferences.frontendFramework || 'N/A'} - Use EXACTLY this framework, no alternatives
+- **JavaScript vs TypeScript:** If "Vue + Vite" (without TypeScript mentioned) → Use .js files, NO .ts files, NO TypeScript configuration
+- **File Extensions:** For Vue + Vite → main.js, components as .vue, NO .ts files unless TypeScript explicitly selected
+- **Configuration Files:** For Vue + Vite (JS) → vite.config.js, NO tsconfig files, NO TypeScript dependencies
+- **Package.json Script:** Match the selected framework exactly - Vue + Vite should have standard Vite scripts
 
-**FRAMEWORK-SPECIFIC CONTENT REQUIREMENTS:**
-    - **Vue.js Components:** Create REALISTIC Vue.js components with proper composition API, reactive data, computed properties, and methods. NOT just "Hello World" but actual framework showcases
-    - **Laravel Files:** Generate REAL Laravel code - proper controllers with multiple methods, models with relationships, blade templates with layouts, routing with multiple routes
-    - **Main/Index Files:** For App.vue, create a proper Vue app with navigation, multiple views, and framework features. For Laravel welcome page, create the classic Laravel welcome with features showcase
-    - **Router/Navigation:** Generate actual routing systems - Vue Router with multiple routes, Laravel routes with resource controllers
-    - **Styling:** Use the selected CSS framework properly (Bootstrap classes, Tailwind utilities, etc.) with realistic layouts
-    - **Database:** For Laravel, include proper migrations, seeders, and model relationships
-    - **API Routes:** For fullstack projects, create matching API endpoints and frontend calls
-    - **NO MINIMAL CONTENT:** Avoid single-line components or empty controllers. Create content that demonstrates the framework's capabilities
+**REQUIREMENTS:**
 
-1.  **Content:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add any explanations, comments, or markdown wrappers.
-2.  **NO MARKDOWN FORMATTING:** Do NOT wrap the output in markdown code blocks. Do NOT include markdown formatting like json, javascript, html, css, yaml, dockerfile blocks. The output must be the raw file content that can be directly written to disk.
-3.  **STRICT FILE REFERENCE VALIDATION:** NEVER reference files that don't exist in the provided project structure. This applies to ALL file types:
-    - Images, assets, CSS files, JS files, components, etc.
-    - Import statements, require statements, src attributes, href attributes
-    - If a file is not explicitly listed in the project structure, DO NOT reference it
-4.  **Contextual Accuracy:** Use the "Full Project Structure for Context" to ensure all paths in the generated code (e.g., in Dockerfiles, \`docker-compose.yml\`, \`package.json\`, import statements) are correct and consistent with the provided file list.
-3.  **Bilingual:** All comments and user-facing text (like in a README.md) must be bilingual (EN/IT).
-4.  **README.md Specifics:** If generating the \`README.md\`, it MUST be detailed and specific to the project stack. It MUST include:
-    - A "Prerequisites" section listing tools the user must have installed globally (e.g., Node.js, Docker, Composer for PHP projects).
-    - An "Installation & Setup" section with the EXACT commands to run the project (e.g., \`docker-compose up --build\`).
-5.  **.gitignore:** If generating the \`.gitignore\`, it must be comprehensive for the chosen technologies (e.g., include \`node_modules\`, \`vendor\`, \`.env\`).
-6.  **Dependencies:** All dependencies in configuration files like \`package.json\` or \`composer.json\` must be correct and up-to-date.
-    - For PHP projects: Use ONLY PHP packages (phpunit/phpunit, laravel/framework, guzzlehttp/guzzle, etc.)
-    - For Node.js projects: Use ONLY npm packages
-    - NEVER mix technologies: No .NET packages in PHP, no Python packages in Node.js, etc.
-7.  **Dockerfile Specifics:** When generating a Dockerfile, pay close attention to the build context and multi-stage builds:
-    - For multi-stage builds (with multiple \`FROM\` statements), you MUST name ALL build stages (e.g., \`FROM node:lts-alpine AS builder\`) and correctly reference them in \`COPY --from=...\` commands.
-    - Paths in \`COPY\` commands must be relative to the build context. For example, if \`docker-compose.yml\` defines \`build: ./frontend\`, then inside \`frontend/Dockerfile\`, use \`COPY package.json ./\`, NOT \`COPY frontend/package.json ./\`.
-    - Never reference undefined stage names in \`COPY --from=\` commands.
-    - **CRITICAL FILE EXISTENCE CHECK:** ONLY copy files that actually exist in the project structure. Before adding any \`COPY\` command, verify that the source file exists in the provided file list. For example:
-      * If \`package-lock.json\` is NOT in the file list, do NOT include \`COPY package-lock.json ./\` in the Dockerfile
-      * If \`yarn.lock\` is NOT in the file list, do NOT include \`COPY yarn.lock ./\` in the Dockerfile
-      * If \`composer.lock\` is NOT in the file list, do NOT include \`COPY composer.lock ./\` in the Dockerfile
-      * If \`nginx.conf\` is NOT in the file list, do NOT include any \`COPY nginx.conf\` commands in the Dockerfile
-      * Only copy files that are explicitly listed in the "Full Project Structure for Context"
-      * For Node.js projects: If \`package-lock.json\` is not in the file list, use \`RUN npm install\` instead of \`RUN npm ci\`
-      * For Nginx configurations: If custom nginx config files are not in the file list, use the default Nginx configuration instead
-    - **GENERAL RULE:** Every single file referenced in any COPY command MUST exist in the "Full Project Structure for Context" list. If it doesn't exist in the list, DO NOT reference it in the Dockerfile.
-8.  **FILE VALIDATION EXAMPLES:** Before writing any COPY command, ask yourself:
-    - Does \`package-lock.json\` exist in the file list? If NO → do NOT copy it, use \`npm install\` instead of \`npm ci\`
-    - Does \`default.conf\` or \`nginx.conf\` exist in the file list? If NO → do NOT copy it, use default nginx config
-    - Does \`composer.lock\` exist in the file list? If NO → do NOT copy it
-    - ONLY copy files that are EXPLICITLY listed in the file structure provided above
-9.  **DOCKERFILE EXAMPLE:** For a Node.js frontend without package-lock.json:
-    \`\`\`
-    FROM node:lts-alpine AS builder
-    WORKDIR /app
-    COPY package.json ./
-    RUN npm install
-    COPY . .
-    RUN npm run build
-    
-    FROM nginx:alpine
-    COPY --from=builder /app/dist /usr/share/nginx/html
-    EXPOSE 80
-    CMD ["nginx", "-g", "daemon off;"]
-    \`\`\`
-    Notice: NO package-lock.json copy, NO nginx config copy - only existing files!
-10. **PHP/COMPOSER SPECIFICS:** For PHP Dockerfiles using Composer:
-    - ALWAYS install Composer before using it: \`RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer\`
-    - Or use official Composer image: \`COPY --from=composer:latest /usr/bin/composer /usr/bin/composer\`
-    - Install system dependencies that Laravel/PHP projects typically need
-    - **IMPORTANT:** NEVER copy composer.lock in COPY commands. Only copy composer.json and let Composer generate the lock file automatically.
-    - For Laravel projects, use --no-scripts flag to avoid errors when artisan is not yet available: \`composer install --no-interaction --no-dev --optimize-autoloader --no-scripts\`
-    - Example PHP Dockerfile structure:
+**A. OUTPUT FORMAT & STRUCTURE**
+
+A1. **Content Output:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add explanations, comments, or markdown wrappers.
+
+A2. **NO MARKDOWN FORMATTING:** Do NOT wrap output in markdown code blocks. Output must be raw file content that can be directly written to disk.
+
+A3. **File Reference Rule:** NEVER reference files that don't exist in the provided project structure (images, assets, CSS, JS, components, etc.)
+
+**B. FRAMEWORK REQUIREMENTS**
+
+B1. **Vue.js Projects** - Replicate EXACTLY \`npm create vue@latest\` structure:
+    - **Welcome page:** src/App.vue with official Vue design + chosen CSS framework
+    - **Entry point:** src/main.js, index.html with relative paths (./src/main.js NOT /src/main.js)
+    - **Vite config:** vite.config.js with @ alias: \`'@': fileURLToPath(new URL('./src', import.meta.url))\`
+    - **Router:** If selected, proper Vue Router in src/router/index.js
+    - **Store:** If Pinia selected, proper store in src/stores/index.js
+
+B2. **Laravel Projects** - Replicate EXACTLY \`composer create-project laravel/laravel\` structure:
+    - **ABSOLUTE RULE:** NEVER EVER use ANY Lumen classes or patterns. This is Laravel standard, NOT Lumen.
+    - **Forbidden code:** NEVER use \`Laravel\\Lumen\\Application\`, \`Laravel\\Lumen\\Bootstrap\\LoadEnvironmentVariables\`, or any \`Laravel\\Lumen\` namespace
+    - **Required:** Use ONLY \`\\Illuminate\\Foundation\\Application::configure()\` in bootstrap/app.php
+    - **Standard Laravel bootstrap:** Must use Laravel 11+ bootstrap pattern with configure() method
+    - **Welcome:** resources/views/welcome.blade.php with official Laravel design
+    - **Directories:** Standard app/, config/, database/, routes/, etc.
+
+**C. DEPENDENCY CONSISTENCY**
+
+C1. **Critical Rule:** Every import/require MUST have corresponding dependency in package.json/composer.json:
+    - Vue + Pinia → "pinia": "^2.1.0" in package.json
+    - Vue + Router → "vue-router": "^4.2.5" in package.json  
+    - Bootstrap → "bootstrap": "^5.3.2" in package.json
+    - Laravel → "laravel/framework" in composer.json
+
+C2. **Technology Consistency:** PHP projects use ONLY PHP packages, Node.js use ONLY npm packages
+
+**D. DOCKER CONFIGURATION**
+
+D1. **Port Standards:**
+    - Frontend: 8080:80 (Nginx serves static files)
+    - Backend: 8000:8000 (Laravel serve)
+    - Database: 3306:3306
+    - NEVER use dev ports (5173, 3000) in containers
+
+D2. **File Validation:** ONLY copy files that exist in project structure:
+    - If package-lock.json NOT in list → use \`npm install\` not \`npm ci\`
+    - If composer.lock NOT in list → don't copy it
+    - If nginx.conf NOT in list → use default config
+
+D3. **Volume Warning:** For docker-compose.yml backend services:
+    - **NEVER use:** \`volumes: - ./backend:/var/www/html\` (overwrites vendor directory)
+    - **PRODUCTION RULE:** Use NO volumes for backend services in docker-compose.yml
+    - **CORRECT for production:** Remove all volume mounts from backend service
+    - **ONLY IF development volumes needed:** Add vendor persistence:
       \`\`\`
-      FROM php:8.1-fpm
-      RUN apt-get update && apt-get install -y \\
-          zip unzip git curl libpng-dev libonig-dev libxml2-dev
-      RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-      COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-      WORKDIR /var/www/html
-      COPY composer.json ./
-      RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
-      COPY . .
+      volumes:
+        - ./backend:/var/www/html
+        - vendor_data:/var/www/html/vendor
       \`\`\`
-11. **DOCKER COMPOSE VOLUME MOUNT CRITICAL WARNING:** For backend services (especially PHP/Laravel):
-    - **NEVER mount the entire backend directory** as a volume in docker-compose.yml because it overwrites the vendor directory created during build
-    - **WRONG:** \`volumes: - ./backend:/var/www/html\` (this overwrites vendor folder and breaks dependencies)
-    - **CORRECT for development:** Either:
-      * Remove volume mounts entirely and rebuild when code changes: \`docker compose up --build\`
-      * Or use specific file mounts that exclude vendor: \`volumes: - ./backend/app:/var/www/html/app\`
-      * Or add a volume for vendor persistence: 
-        \`\`\`
-        volumes:
-          - ./backend:/var/www/html
-          - vendor_data:/var/www/html/vendor
-        \`\`\`
-        And add vendor_data to the volumes section at the bottom
-    - **PRODUCTION:** Never use volume mounts in production, let the build process handle everything
-    - **Laravel services must expose port 8000** and use correct CMD: \`CMD php artisan serve --host=0.0.0.0 --port=8000\`
-12. **UNIVERSAL FILE REFERENCE RULE:** For ANY file type (Vue, React, HTML, CSS, etc.):
-    - Do NOT reference images, assets, or files that are not in the provided file structure
-    - Do NOT use import/require statements for files that don't exist in the file list
-    - Do NOT reference CSS files, JS files, or any assets that aren't explicitly listed
-    - If you need to reference an asset in Vue/React components, either:
-      * Create placeholder content without external references
-      * Use inline styles instead of external CSS files
-      * Use text placeholders instead of images
-    - Example: Instead of \`src="./assets/logo.png"\`, use \`<!-- Logo placeholder -->\` or remove the image entirely
+      And add \`vendor_data:\` in volumes section at bottom
 
-**Your output must be ONLY the raw file content for \`${filePath}\`. No markdown, no explanations, no code block wrappers - just the pure file content.**`;
+**E. CROSS-PLATFORM COMPATIBILITY**
+
+E1. **README Requirements:**
+    - Prerequisites with Docker as universal option
+    - Both local AND Docker installation alternatives
+    - Docker Compose instructions: \`docker-compose up --build\`
+    - Troubleshooting with Docker alternatives
+
+E2. **Bilingual:** All user-facing text must be bilingual (EN/IT)
+
+**Output must be ONLY raw file content for \`${filePath}\`. No markdown, no explanations.**
+`;
 
   // No spinner here as it will be managed by the calling function in a loop
   try {
