@@ -10,10 +10,15 @@ const ora = require('ora');
 const chalk = require('chalk');
 require('dotenv').config({ quiet: true });
 
+// Import the modular prompt builder and validation systems
+const PromptBuilder = require('./promptBuilder_v2');
+const PostGenerationValidator = require('./postGenerationValidator');
+const AutoCorrector = require('./autoCorrector');
+
 // Constants for CLI UI - Used for navigation throughout the application
 // Costanti per l'interfaccia CLI - Utilizzate per la navigazione nell'applicazione
 const BACK_OPTION = '← Go Back';
-const BACK_VALUE = '__back__';
+const BACK_VALUE = 'back';
 const EXIT_OPTION = '× Exit';
 const EXIT_VALUE = '__exit__';
 
@@ -343,7 +348,49 @@ async function askApiKey() {
 
 // Generate project file structure using Google Gemini (Architect Role)
 async function generateFileStructure(apiKey, preferences) {
-  let promptText = `You are an expert project architect. Based on the user's selections, generate ONLY a JSON array of all the file paths needed for the project.
+  // Initialize the modular prompt builder
+  const promptBuilder = new PromptBuilder();
+  
+  // Build specialized prompt based on user preferences
+  // SEMPRE include Docker - è l'obiettivo principale del tool!
+  let promptText;
+  
+  if (preferences.projectType === 'frontend' && preferences.frontend) {
+    // Frontend-only project with Docker
+    promptText = promptBuilder.buildPrompt({
+      frontend: preferences.frontend || preferences.frontendFramework,
+      backend: null,
+      cssFramework: preferences.cssFramework,
+      includeDocker: true, // SEMPRE Docker per frontend
+      includeAuth: false,
+      isFullStack: false
+    });
+  } else if (preferences.projectType === 'backend' && preferences.backend) {
+    // Backend-only project with Docker
+    promptText = promptBuilder.buildPrompt({
+      frontend: null,
+      backend: preferences.backend || preferences.backendFramework,
+      cssFramework: null,
+      includeDocker: true, // SEMPRE Docker per backend
+      includeAuth: false,
+      isFullStack: false
+    });
+  } else {
+    // Full-stack project with Docker
+    promptText = promptBuilder.buildPrompt({
+      frontend: preferences.frontend || preferences.frontendFramework,
+      backend: preferences.backend || preferences.backendFramework,
+      cssFramework: preferences.cssFramework,
+      includeDocker: true, // SEMPRE Docker per fullstack
+      includeAuth: false,
+      isFullStack: preferences.projectType === 'fullstack'
+    });
+  }
+
+  // Add specific instructions for file structure generation
+  promptText += `
+
+**CURRENT TASK: Generate complete file structure as JSON array**
 
 User selections:
 - Project Type: ${preferences.projectType}
@@ -351,64 +398,24 @@ User selections:
 - CSS Framework: ${preferences.cssFramework || 'N/A'}
 - Backend: ${preferences.backend || 'N/A'} (${preferences.backendFramework || 'N/A'})
 
-**Instructions:**
-1.  **Output Format:** Your response MUST be a single, raw, valid JSON array. Do not include any other text, explanations, or markdown.
-2.  **COMPLETE FRAMEWORK STRUCTURE:** Generate the FULL project structure as if created by the framework's official CLI tools:
-    - **Vue.js projects:** Include the complete structure like \`npm create vue@latest\` would create:
-      * src/components/, src/views/, src/router/, src/stores/, src/assets/
-      * public/ directory with index.html, favicon.ico
-      * Multiple .vue components (App.vue, HelloWorld.vue, WelcomeView.vue, AboutView.vue)
-      * Router configuration, store setup, main.js with proper imports
-      * CSS files, configuration files (vite.config.js, etc.)
-    - **Laravel projects:** Include the complete structure like \`composer create-project laravel/laravel\` would create:
-      * app/Http/Controllers/, app/Models/, database/migrations/, resources/views/
-      * routes/web.php, routes/api.php
-      * Multiple PHP files (User.php model, controllers, middleware)
-      * Blade templates, Laravel configuration files
-      * artisan, bootstrap/, config/, storage/, tests/ directories
-    - **React projects:** Include complete structure with components, hooks, styles
-    - **NOT just minimal files:** Don't create only App.vue or a single controller - create a realistic, working project
-3.  **Structure Organization:**
-    - For 'fullstack' projects, use '/frontend' and '/backend' subdirectories.
-    - Include all necessary configuration files (package.json, Dockerfile, docker-compose.yml, .gitignore, .env.example, etc.).
-    - **NEVER include auto-generated files:** Do NOT include package-lock.json, yarn.lock, composer.lock, or any other dependency lock files as these should be generated automatically by package managers.
-4.  **Framework-Specific Requirements:**
-    - **Vue.js + Vite:** Include vite.config.js, multiple components, router setup, store (Pinia), proper src/ structure
-    - **Laravel:** Include proper MVC structure, multiple models/controllers, blade templates, routing, middleware
-    - **React:** Include components/, hooks/, utils/, proper JSX structure
-    - **Node.js/Express:** Include routes/, middleware/, controllers/, proper Express app structure
-5.  **MANDATORY DOCKER FILES:** For fullstack projects, you MUST ALWAYS include:
-    - \`docker-compose.yml\` in the root directory (REQUIRED for fullstack projects)
-    - \`frontend/Dockerfile\` (REQUIRED for frontend containerization)
-    - \`backend/Dockerfile\` (REQUIRED for backend containerization)
-    - These files are NOT optional - they are essential for the project to work as intended
-6.  **Example JSON Array Output for Vue+Laravel Fullstack:**
-    [
-      "docker-compose.yml",
-      ".gitignore",
-      ".env.example",
-      "README.md",
-      "frontend/Dockerfile",
-      "frontend/package.json",
-      "frontend/vite.config.js",
-      "frontend/index.html",
-      "frontend/src/main.js",
-      "frontend/src/App.vue",
-      "frontend/src/components/HelloWorld.vue",
-      "frontend/src/router/index.js",
-      "frontend/src/views/HomeView.vue",
-      "frontend/src/views/AboutView.vue",
-      "backend/Dockerfile",
-      "backend/.env.example",
-      "backend/composer.json",
-      "backend/artisan",
-      "backend/app/Http/Controllers/Controller.php",
-      "backend/app/Models/User.php",
-      "backend/routes/web.php",
-      "backend/routes/api.php",
-      "backend/resources/views/welcome.blade.php",
-      "backend/database/migrations/0001_01_01_000000_create_users_table.php"
-    ]`;
+**CRITICAL OUTPUT REQUIREMENTS:**
+1. Your response MUST be a single, raw, valid JSON array
+2. Do not include any other text, explanations, or markdown
+3. Generate COMPLETE framework structure (not minimal files)
+4. Include ALL configuration files mentioned in the rules above
+5. NO auto-generated files (package-lock.json, composer.lock, etc.)
+
+Example JSON output:
+[
+  "docker-compose.yml",
+  "README.md",
+  "frontend/package.json",
+  "frontend/Dockerfile",
+  "frontend/src/App.vue",
+  "backend/composer.json",
+  "backend/Dockerfile",
+  "backend/bootstrap/app.php"
+]`;
 
   const spinner = ora('Calling AI Architect to design file structure...').start();
   try {
@@ -441,7 +448,23 @@ User selections:
 
 // Generate content for a single file using Google Gemini (Developer Role)
 async function generateFileContent(apiKey, preferences, filePath, fileList) {
-  let promptText = `You are an expert software developer. Your task is to generate the complete, production-ready code for a specific file, using the entire project structure for context.
+  // Initialize the modular prompt builder
+  const promptBuilder = new PromptBuilder();
+  
+  // Build technology-specific prompt
+  let promptText = promptBuilder.buildPrompt({
+    frontend: preferences.frontend || preferences.frontendFramework,
+    backend: preferences.backend || preferences.backendFramework,
+    cssFramework: preferences.cssFramework,
+    includeDocker: true,
+    includeAuth: false,
+    isFullStack: preferences.projectType === 'fullstack'
+  });
+  
+  // Add specific context for this file generation task
+  promptText += `
+
+**CURRENT TASK: Generate content for specific file**
 
 **Project Stack:**
 - Project Type: ${preferences.projectType}
@@ -457,20 +480,13 @@ ${JSON.stringify(fileList, null, 2)}
 
 **File to Generate:** \`${filePath}\`
 
-**TECHNOLOGY CONSISTENCY RULES:**
-- **Frontend Framework:** ${preferences.frontendFramework || 'N/A'} - Use EXACTLY this framework, no alternatives
-- **JavaScript vs TypeScript:** If "Vue + Vite" (without TypeScript mentioned) → Use .js files, NO .ts files, NO TypeScript configuration
-- **File Extensions:** For Vue + Vite → main.js, components as .vue, NO .ts files unless TypeScript explicitly selected
-- **Configuration Files:** For Vue + Vite (JS) → vite.config.js, NO tsconfig files, NO TypeScript dependencies
-- **Package.json Script:** Match the selected framework exactly - Vue + Vite should have standard Vite scripts
-
-**REQUIREMENTS:**
-
-**A. OUTPUT FORMAT & STRUCTURE**
-
-A1. **Content Output:** Generate ONLY the raw code/text for the requested file (\`${filePath}\`). Do not add explanations, comments, or markdown wrappers.
-
-A2. **NO MARKDOWN FORMATTING:** Do NOT wrap output in markdown code blocks. Output must be raw file content that can be directly written to disk.
+**CRITICAL OUTPUT REQUIREMENTS:**
+1. Generate ONLY the raw code/text for the requested file
+2. NO explanations, comments, or markdown wrappers
+3. Content must be directly writable to disk
+4. Follow all technology-specific rules mentioned above
+    - **Example WRONG:** \`\`\`json\\n{...}\\n\`\`\`
+    - **Example CORRECT:** {"name": "value"}
 
 A3. **File Reference Rule:** NEVER reference files that don't exist in the provided project structure (images, assets, CSS, JS, components, etc.)
 
@@ -482,12 +498,34 @@ B1. **Vue.js Projects** - Replicate EXACTLY \`npm create vue@latest\` structure:
     - **Vite config:** vite.config.js with @ alias: \`'@': fileURLToPath(new URL('./src', import.meta.url))\`
     - **Router:** If selected, proper Vue Router in src/router/index.js
     - **Store:** If Pinia selected, proper store in src/stores/index.js
+    - **Build Setup:** ALWAYS include in package.json: \`"build": "vite build", "preview": "vite preview"\`
+    - **Docker Build:** Multi-stage Dockerfile: Stage 1 build with Node.js, Stage 2 serve with nginx
+    - **NGINX Config:** REQUIRED file frontend/nginx.conf with SPA routing and API proxy
 
 B2. **Laravel Projects** - Replicate EXACTLY \`composer create-project laravel/laravel\` structure:
     - **ABSOLUTE RULE:** NEVER EVER use ANY Lumen classes or patterns. This is Laravel standard, NOT Lumen.
     - **Forbidden code:** NEVER use \`Laravel\\Lumen\\Application\`, \`Laravel\\Lumen\\Bootstrap\\LoadEnvironmentVariables\`, or any \`Laravel\\Lumen\` namespace
     - **Required:** Use ONLY \`\\Illuminate\\Foundation\\Application::configure()\` in bootstrap/app.php
     - **Standard Laravel bootstrap:** Must use Laravel 11+ bootstrap pattern with configure() method
+    - **CORRECT bootstrap/app.php example:**
+      \`\`\`php
+      <?php
+      
+      require_once __DIR__.'/../vendor/autoload.php';
+      
+      return \\Illuminate\\Foundation\\Application::configure(basePath: dirname(__DIR__))
+          ->withRouting(
+              web: __DIR__.'/../routes/web.php',
+              commands: __DIR__.'/../routes/console.php',
+              health: '/up',
+          )
+          ->withMiddleware(function (Middleware \\$middleware) {
+              //
+          })
+          ->withExceptions(function (Exceptions \\$exceptions) {
+              //
+          })->create();
+      \`\`\`
     - **Welcome:** resources/views/welcome.blade.php with official Laravel design
     - **Directories:** Standard app/, config/, database/, routes/, etc.
 
@@ -499,7 +537,18 @@ C1. **Critical Rule:** Every import/require MUST have corresponding dependency i
     - Bootstrap → "bootstrap": "^5.3.2" in package.json
     - Laravel → "laravel/framework" in composer.json
 
+C2. **System Dependencies:** Required packages for each technology:
+    - **PHP/Laravel:** \`libzip-dev zip unzip git supervisor nginx libonig-dev curl\`
+    - **Node.js/Vue:** \`build-essential python3\` for node-gyp compilation
+    - **Common:** \`curl wget ca-certificates\` for healthchecks and downloads
+
 C2. **Technology Consistency:** PHP projects use ONLY PHP packages, Node.js use ONLY npm packages
+
+C3. **Strict Technology Separation:**
+    - **PHP/Laravel projects:** NEVER include package.json, node_modules, npm scripts, or Node.js dependencies
+    - **Node.js/Vue projects:** NEVER include composer.json, vendor/, PHP classes, or PHP dependencies  
+    - **Fullstack projects:** Each service (frontend/backend) should have its own technology stack completely separate
+    - **Forbidden mixing:** No PHP packages in package.json, no npm packages in composer.json
 
 **D. DOCKER CONFIGURATION**
 
@@ -509,10 +558,25 @@ D1. **Port Standards:**
     - Database: 3306:3306
     - NEVER use dev ports (5173, 3000) in containers
 
-D2. **File Validation:** ONLY copy files that exist in project structure:
-    - If package-lock.json NOT in list → use \`npm install\` not \`npm ci\`
-    - If composer.lock NOT in list → don't copy it
-    - If nginx.conf NOT in list → use default config
+D2. **Docker Compose Modern Format:**
+    - **NO version field:** Remove \`version: '3.9'\` line (obsolete in modern Docker Compose)
+    - **Explicit service dependencies:** Use proper \`depends_on\` with condition checking
+    - **Named volumes:** Always declare volumes at bottom of file
+    - **Health checks:** Add health checks for database AND backend services
+    - **Backend health check:** \`curl --fail http://localhost:8000/up || exit 1\` for Laravel /up endpoint
+
+D2. **File Validation & Required Configs:**
+    - **Package managers:** If package-lock.json NOT in list → use \`npm install\` not \`npm ci\`
+    - **Composer:** If composer.lock NOT in list → don't copy it, use \`composer install\` to generate
+    - **NGINX Frontend:** ALWAYS create nginx.conf for Vue.js projects with:
+      * \`try_files $uri $uri/ /index.html;\` for SPA routing
+      * \`location /api { proxy_pass http://backend:8000; }\` for API proxy
+      * \`root /usr/share/nginx/html;\` and \`index index.html;\`
+    - **Build Context Rule:** If docker-compose.yml uses \`build: ./backend\`, then in backend/Dockerfile use \`COPY . .\` NOT \`COPY backend/ .\`
+    - **Dockerfile Path Rules:**
+      * Build context \`./frontend\` → use \`COPY package.json .\` NOT \`COPY frontend/package.json .\`
+      * Build context \`./backend\` → use \`COPY composer.json .\` NOT \`COPY backend/composer.json .\`
+      * Build context \`.\` (root) → use \`COPY frontend/package.json .\` (full path needed)
 
 D3. **Volume Warning:** For docker-compose.yml backend services:
     - **NEVER use:** \`volumes: - ./backend:/var/www/html\` (overwrites vendor directory)
@@ -526,6 +590,40 @@ D3. **Volume Warning:** For docker-compose.yml backend services:
       \`\`\`
       And add \`vendor_data:\` in volumes section at bottom
 
+D4. **PHP/Laravel Dockerfile Requirements:**
+    - **MANDATORY Composer:** Always install Composer: \`COPY --from=composer:latest /usr/bin/composer /usr/bin/composer\`
+    - **Complete Dependencies:** Install ALL required packages: \`libzip-dev zip unzip git supervisor nginx libonig-dev curl\`
+    - **PHP Extensions:** Install: \`pdo_mysql mbstring zip exif pcntl\`
+    - **Web Server Setup:** Configure PHP-FPM + Nginx for production:
+      * Install nginx and supervisor in same container
+      * Create nginx config for Laravel with \`try_files $uri $uri/ /index.php?$query_string;\`
+      * Add supervisor config to run both php-fpm and nginx
+      * Expose port 8000 and use \`CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]\`
+    - **Permissions:** Add \`RUN chown -R www-data:www-data /var/www/html\` after copying files
+    - **Storage permissions:** Add \`RUN chmod -R 775 /var/www/html/storage/\` for Laravel
+    - **Production practice:** NEVER copy composer.lock - only copy composer.json and let install generate lock file
+
+D5. **REQUIRED Configuration Files:**
+    - **frontend/nginx.conf for Vue.js:**
+      \`\`\`
+      server {
+          listen 80;
+          server_name localhost;
+          root /usr/share/nginx/html;
+          index index.html;
+          location / { try_files $uri $uri/ /index.html; }
+          location /api { proxy_pass http://backend:8000; }
+      }
+      \`\`\`
+    - **backend/supervisord.conf for Laravel:**
+      \`\`\`
+      [supervisord]
+      [program:nginx]
+      command=nginx -g "daemon off;"
+      [program:php-fpm]
+      command=php-fpm -F
+      \`\`\`
+
 **E. CROSS-PLATFORM COMPATIBILITY**
 
 E1. **README Requirements:**
@@ -535,6 +633,12 @@ E1. **README Requirements:**
     - Troubleshooting with Docker alternatives
 
 E2. **Bilingual:** All user-facing text must be bilingual (EN/IT)
+
+E3. **Environment Configuration:**
+    - **.env.example:** Must include ALL required environment variables with safe defaults
+    - **Cross-platform paths:** Use forward slashes in all configuration files  
+    - **Database credentials:** Use consistent naming (DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD)
+    - **Port consistency:** .env.example should match docker-compose.yml port mappings
 
 **Output must be ONLY raw file content for \`${filePath}\`. No markdown, no explanations.**
 `;
@@ -589,8 +693,68 @@ async function createProject(apiKey, preferences) {
   }
 
   spinner.succeed(chalk.green(`Created ${filesCreated} files in the project structure.`));
+  
+  // 3. NUOVO WORKFLOW: Validate -> Fix -> Validate
+  console.log(chalk.yellow('\n🔍 Starting post-generation validation...'));
+  
+  const validator = new PostGenerationValidator();
+  const autoCorrector = new AutoCorrector(apiKey);
+  
+  let validationAttempts = 0;
+  const maxAttempts = 3;
+  
+  while (validationAttempts < maxAttempts) {
+    validationAttempts++;
+    console.log(chalk.blue(`\n📋 Validation attempt ${validationAttempts}/${maxAttempts}...`));
+    
+    // Validazione del progetto generato
+    const validationResult = await validator.validateGeneratedProject(
+      preferences.projectPath,
+      preferences.projectType,
+      preferences
+    );
+    
+    if (validationResult.isValid) {
+      console.log(chalk.green('✅ Project validation PASSED - Everything looks perfect!'));
+      break;
+    } else {
+      console.log(chalk.yellow(`⚠️  Found ${validationResult.errors.length} issues that need correction:`));
+      validationResult.errors.forEach(error => {
+        console.log(chalk.red(`   ❌ ${error}`));
+      });
+      
+      if (validationAttempts >= maxAttempts) {
+        console.log(chalk.yellow('\n⚠️  Maximum correction attempts reached. Manual review may be needed.'));
+        break;
+      }
+      
+      // Correzione automatica
+      console.log(chalk.blue('\n🔧 Starting automatic correction...'));
+      const correctionResult = await autoCorrector.correctProject(
+        preferences.projectPath,
+        validationResult,
+        preferences.projectType,
+        preferences
+      );
+      
+      if (correctionResult.success) {
+        console.log(chalk.green(`✅ Applied ${correctionResult.corrections.length} corrections`));
+        correctionResult.corrections.forEach(correction => {
+          if (correction.success) {
+            console.log(chalk.green(`   ✅ ${correction.type}: ${correction.file}`));
+          } else {
+            console.log(chalk.red(`   ❌ Failed ${correction.type}: ${correction.file}`));
+          }
+        });
+      } else {
+        console.log(chalk.red(`❌ Automatic correction failed: ${correctionResult.error}`));
+        break;
+      }
+    }
+  }
+  
   console.log(chalk.bold.green(`\nProject "${preferences.projectName}" created successfully at ${preferences.projectPath}`));
-  console.log(chalk.blue('Please check the generated files, install dependencies, and start the project.'));
+  console.log(chalk.blue('🐳 Your project is now ready with Docker! Check the README.md for setup instructions.'));
 }
 
 // Main project creation flow
