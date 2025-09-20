@@ -11,166 +11,87 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
  * @version 2.0.0
  */
 
-const fs = require('fs');
-const path = require('path');
-const ora = require('ora');
-const chalk = require('chalk');
+const { writeFileClean } = require('./fileWriter');
+const FileStructureGenerator = require('./fileStructureGenerator');
+const FileContentGenerator = require('./fileContentGenerator');
+const { ensureProjectDirectory, deleteProjectDirectory } = require('./projectDirectoryManager');
 
 // Import modular components / Importa componenti modulari
 const PromptBuilder = require('./promptBuilder');
 const PostGenerationValidator = require('../validators/postGenerationValidator');
 const AutoCorrector = require('../validators/autoCorrector');
 const Logger = require('../utils/logger');
+const { resolveStackName, getOfficialFilesDir, loadOfficialFiles } = require('./stackResolver');
+const { validateAgainstOfficial } = require('../validators/officialFilesValidator');
 
 class ProjectGenerator {
   constructor(apiKey) {
     this.apiKey = apiKey;
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-    this.promptBuilder = new PromptBuilder();
-    this.logger = new Logger();
+  this.promptBuilder = new PromptBuilder();
+  this.logger = new Logger();
+  this.fileStructureGenerator = new FileStructureGenerator(this.model, this.promptBuilder, this.logger);
+  this.fileContentGenerator = new FileContentGenerator(this.model, this.promptBuilder, this.logger);
   }
 
   // Main project generation flow / Flusso principale di generazione del progetto
   async generateProject(preferences) {
     this.logger.info('Starting project generation', preferences);
     this.logger.userInfo('Generating your project...');
-    
-    try {
-      // 1. Generate file structure / Genera struttura file
-      const fileList = await this.generateFileStructure(preferences);
-      this.logger.info(`Generated file structure with ${fileList.length} files`, { files: fileList });
-      
-      if (!fileList || fileList.length === 0) {
-        throw new Error('Could not generate project structure');
+
+    // Risolvi stack e carica file ufficiali
+    const stackName = resolveStackName(preferences);
+    const officialFilesDir = getOfficialFilesDir(stackName);
+    const officialFiles = loadOfficialFiles(stackName);
+    this.logger.debug('Stack risolto', { stackName, officialFilesDir, officialFilesCount: Object.keys(officialFiles).length });
+
+
+  // 1. Assicura che la directory progetto esista
+  ensureProjectDirectory(preferences.projectPath);
+
+  // 2. Genera la struttura file
+  const fileList = await this.fileStructureGenerator.generateFileStructure(preferences);
+
+  // 3. Genera i contenuti dei file e scrivili su disco
+  await this.generateProjectFiles(preferences, fileList);
+
+    // Validazione: confronta i file generati con quelli ufficiali
+    const validationResult = validateAgainstOfficial(preferences.projectPath, officialFiles);
+    if (validationResult.isValid) {
+      this.logger.info('Validazione superata: tutti i file corrispondono agli ufficiali!');
+    } else {
+      this.logger.warn('Validazione fallita:', validationResult);
+      // Cancella la cartella progetto se la validazione fallisce
+      try {
+        const fsPromises = require('fs').promises;
+        if (fs.existsSync(preferences.projectPath)) {
+          await fsPromises.rm(preferences.projectPath, { recursive: true, force: true });
+          this.logger.info(`Cartella progetto eliminata: ${preferences.projectPath}`);
+        }
+      } catch (err) {
+        this.logger.error(`Errore durante la cancellazione della cartella progetto: ${err.message}`);
       }
-
-      // 2. Create project directory / Crea directory del progetto
-      this.ensureProjectDirectory(preferences.projectPath);
-
-      // 3. Generate content for each file / Genera contenuto per ogni file
-      const filesCreated = await this.generateProjectFiles(preferences, fileList);
-      this.logger.userSuccess(`Created ${filesCreated} project files`);
-
-      // 4. Validate and auto-correct - MUST be 100% successful / Valida e correggi automaticamente - DEVE essere 100% riuscito
-      const validationSuccess = await this.validateAndCorrect(preferences);
-      
-      if (!validationSuccess) {
-        // Project validation failed - cleanup and abort / Validazione progetto fallita - pulisci e interrompi
-        this.logger.error('Project validation failed after maximum correction attempts');
-        await this.cleanupFailedProject(preferences.projectPath);
-        this.logger.userError('❌ Project generation failed: Unable to create a 100% valid project structure');
-        this.logger.userError('🗑️  Cleaned up incomplete files');
-        this.logger.userError('💡 Please try again or report this issue if it persists');
-        return false;
-      }
-      
-      // 5. Log generation summary (only for successful projects) / Registra riassunto generazione (solo per progetti riusciti)
-      this.logger.logGenerationSummary(preferences, filesCreated, validationSuccess);
-
-      this.logger.userSuccess(`Project "${preferences.projectName}" created successfully!`);
-      console.log(chalk.blue(`📁 Location: ${preferences.projectPath}`));
-      console.log(chalk.gray(`📋 Detailed logs: ${this.logger.getLogPath()}`));
-      
-      return true;
-      
-    } catch (error) {
-      this.logger.error('Project generation failed', { error: error.message, stack: error.stack });
-      this.logger.userError('Project generation failed: ' + error.message);
-      return false;
     }
+
+    return validationResult.isValid;
   }
 
-  // Generate project file structure using AI / Genera struttura file del progetto usando AI
-  async generateFileStructure(preferences) {
-    const promptText = this.buildFileStructurePrompt(preferences);
-    this.logger.debug('Built file structure prompt', { promptLength: promptText.length });
-    
-    const spinner = ora('Designing project architecture...').start();
-    
-    try {
-      const result = await this.model.generateContent(promptText);
-      const response = await result.response;
-      const text = response.text().trim();
-      this.logger.logApiCall('file structure generation', true);
 
-      // Parse JSON array from AI response / Analizza array JSON dalla risposta AI
-      const fileList = JSON.parse(text);
-      
-      if (!Array.isArray(fileList)) {
-        throw new Error('AI response is not a valid file list array');
-      }
+  // (RIMOSSO: la logica è ora in fileStructureGenerator.js)
 
-      spinner.succeed(chalk.green(`Architecture designed`));
-      this.logger.debug('AI response parsed successfully', { fileCount: fileList.length });
-      return fileList;
-      
-    } catch (error) {
-      spinner.fail(chalk.red('Failed to design architecture'));
-      this.logger.logApiCall('file structure generation', false, error);
-      throw error;
-    }
-  }
 
-  // Build prompt for file structure generation / Costruisce prompt per generazione struttura file
-  buildFileStructurePrompt(preferences) {
-    let promptText = this.promptBuilder.buildPrompt({
-      frontend: preferences.frontend || preferences.frontendFramework,
-      backend: preferences.backend || preferences.backendFramework,
-      cssFramework: preferences.cssFramework,
-      includeDocker: true,
-      includeAuth: false,
-      isFullStack: preferences.projectType === 'fullstack'
-    });
-
-    promptText += `
-
-**CURRENT TASK: Generate complete file structure as JSON array**
-
-User selections:
-- Project Type: ${preferences.projectType}
-- Frontend: ${preferences.frontend || 'N/A'} (${preferences.frontendFramework || 'N/A'})
-- CSS Framework: ${preferences.cssFramework || 'N/A'}
-- Backend: ${preferences.backend || 'N/A'} (${preferences.backendFramework || 'N/A'})
-
-**CRITICAL OUTPUT REQUIREMENTS:**
-1. Your response MUST be a single, raw, valid JSON array
-2. Do not include any other text, explanations, or markdown
-3. Generate COMPLETE framework structure (not minimal files)
-4. Include ALL configuration files mentioned in the rules above
-5. NO auto-generated files (package-lock.json, composer.lock, etc.)
-
-Example JSON output:
-[
-  "docker-compose.yml",
-  "README.md",
-  "frontend/package.json",
-  "frontend/Dockerfile",
-  "frontend/src/App.vue",
-  "backend/composer.json",
-  "backend/Dockerfile",
-  "backend/bootstrap/app.php"
-]`;
-
-    return promptText;
-  }
-
-  // Generate content for all project files with progress indication / Genera contenuto per tutti i file del progetto con indicazione progresso
+  // Genera contenuto per tutti i file del progetto con indicazione progresso (ora usa fileContentGenerator)
   async generateProjectFiles(preferences, fileList) {
-    console.log(chalk.blue(`📁 Creating ${fileList.length} project files...`));
+  console.log(`📁 Creating ${fileList.length} project files...`);
     let filesCreated = 0;
-
     for (let i = 0; i < fileList.length; i++) {
       const filePath = fileList[i];
       const progress = Math.round(((i + 1) / fileList.length) * 100);
-      
-      // Update progress display / Aggiorna visualizzazione progresso
-      const fileName = filePath.length > 45 ? '...' + filePath.slice(-42) : filePath;
-      process.stdout.write(`\r${chalk.cyan('⚡')} Generating... ${chalk.yellow(`${i + 1}/${fileList.length}`)} ${chalk.green(`(${progress}%)`)} ${chalk.gray(fileName)}`);
-      
+  const fileName = filePath.length > 45 ? '...' + filePath.slice(-42) : filePath;
+  process.stdout.write(`\r⚡ Generating... ${i + 1}/${fileList.length} (${progress}%) ${fileName}`);
       try {
-        const content = await this.generateSingleFileContent(preferences, filePath, fileList);
-        
+        const content = await this.fileContentGenerator.generateSingleFileContent(preferences, filePath, fileList);
         if (content) {
           this.writeFileToProject(preferences.projectPath, filePath, content);
           filesCreated++;
@@ -182,81 +103,23 @@ Example JSON output:
         this.logger.logFileGeneration(filePath, false, error);
       }
     }
-
-    // Clear progress line and show final result / Pulisci riga progresso e mostra risultato finale
-    process.stdout.write('\r' + ' '.repeat(120) + '\r');
-    console.log(chalk.green(`✔ Generated ${filesCreated}/${fileList.length} files`));
+  process.stdout.write('\r' + ' '.repeat(120) + '\r');
+  console.log(`✔ Generated ${filesCreated}/${fileList.length} files`);
     return filesCreated;
   }
 
-  // Generate content for a single file / Genera contenuto per un singolo file
-  async generateSingleFileContent(preferences, filePath, fileList) {
-    let promptText = this.promptBuilder.buildPrompt({
-      frontend: preferences.frontend || preferences.frontendFramework,
-      backend: preferences.backend || preferences.backendFramework,
-      cssFramework: preferences.cssFramework,
-      includeDocker: true,
-      includeAuth: false,
-      isFullStack: preferences.projectType === 'fullstack'
-    });
 
-    promptText += `
+  // (RIMOSSO: la logica è ora in fileContentGenerator.js)
 
-**CURRENT TASK: Generate content for specific file**
-
-**Project Stack:**
-- Project Type: ${preferences.projectType}
-- Frontend: ${preferences.frontend || 'N/A'} (${preferences.frontendFramework || 'N/A'})
-- CSS Framework: ${preferences.cssFramework || 'N/A'}
-- Backend: ${preferences.backend || 'N/A'} (${preferences.backendFramework || 'N/A'})
-- Project Name: ${preferences.projectName}
-
-**Full Project Structure for Context:**
-\`\`\`json
-${JSON.stringify(fileList, null, 2)}
-\`\`\`
-
-**File to Generate:** \`${filePath}\`
-
-**CRITICAL OUTPUT REQUIREMENTS:**
-1. Generate ONLY the raw code/text for the requested file
-2. NO explanations, comments, or markdown wrappers
-3. Content must be directly writable to disk
-4. Follow all technology-specific rules mentioned above
-
-**Output must be ONLY raw file content for \`${filePath}\`. No markdown, no explanations.**
-`;
-
-    try {
-      const result = await this.model.generateContent(promptText);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error(chalk.red(`Error generating content for ${filePath}:`), error.message);
-      return `// Error: Failed to generate content for ${filePath}`;
-    }
-  }
 
   // Write file content to project directory / Scrivi contenuto file nella directory del progetto
   writeFileToProject(projectPath, filePath, content) {
     const fullPath = path.join(projectPath, filePath);
-    const dirname = path.dirname(fullPath);
-
-    // Create directory if it doesn't exist / Crea directory se non esiste
-    if (!fs.existsSync(dirname)) {
-      fs.mkdirSync(dirname, { recursive: true });
-    }
-
-    // Write file content / Scrivi contenuto file
-    fs.writeFileSync(fullPath, content, 'utf8');
+    writeFileClean(fullPath, content);
   }
 
-  // Ensure project directory exists / Assicura che la directory del progetto esista
-  ensureProjectDirectory(projectPath) {
-    if (!fs.existsSync(projectPath)) {
-      fs.mkdirSync(projectPath, { recursive: true });
-    }
-  }
+
+  // (RIMOSSO: ora usa ensureProjectDirectory da projectDirectoryManager.js)
 
   // Validate generated project and auto-correct issues (silent) / Valida progetto generato e correggi automaticamente i problemi (silenzioso)
   async validateAndCorrect(preferences) {
@@ -318,22 +181,10 @@ ${JSON.stringify(fileList, null, 2)}
     return finalSuccess;
   }
 
+
   // Cleanup failed project - remove all generated files / Pulisci progetto fallito - rimuovi tutti i file generati
   async cleanupFailedProject(projectPath) {
-    try {
-      const fs = require('fs').promises;
-      
-      // Check if directory exists / Controlla se la directory esiste
-      if (fs.access && await fs.access(projectPath).then(() => true).catch(() => false)) {
-        // Remove entire project directory / Rimuovi intera directory del progetto
-        await fs.rmdir(projectPath, { recursive: true });
-        this.logger.info(`Cleaned up failed project directory: ${projectPath}`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to cleanup project directory: ${error.message}`);
-      // Don't throw - this is cleanup, shouldn't block the error reporting
-      // Non lanciare errore - questa è pulizia, non dovrebbe bloccare il reporting errori
-    }
+    await deleteProjectDirectory(projectPath, this.logger);
   }
 }
 

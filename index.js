@@ -31,19 +31,26 @@ class TemplateGenerator {
   async run() {
     try {
       this.displayWelcome();
-      
+
       // 1. Collect user preferences / Raccoglie preferenze utente
       const preferences = await this.collectUserPreferences();
-      
+
       // 2. Get API key / Ottieni chiave API
       const apiKey = await this.apiKeyManager.getApiKey();
-      
+
       // 3. Generate project / Genera progetto
       const generator = new ProjectGenerator(apiKey);
-      await generator.generateProject(preferences);
-      
-      this.displaySuccess();
-      
+      const success = await generator.generateProject(preferences);
+
+      if (success) {
+        this.displaySuccess();
+      } else {
+        // Print log file path for failed generations as well
+        if (generator.logger && generator.logger.logFile) {
+          console.log(chalk.gray(`\n📋 Detailed logs: ${generator.logger.logFile}`));
+        }
+      }
+
     } catch (error) {
       this.handleError(error);
     }
@@ -107,12 +114,17 @@ class TemplateGenerator {
   // Handle application errors / Gestisce errori dell'applicazione
   handleError(error) {
     console.error(chalk.red('\n❌ Application Error:'), error.message);
-    
-    if (error.message.includes('API')) {
+
+    if (error.message && error.message.includes('API')) {
       console.log(chalk.yellow('\n💡 Tip: Make sure your Google Gemini API key is valid'));
       console.log(chalk.white('Get your key at: https://console.cloud.google.com/'));
     }
-    
+
+    // Print log file path if available
+    if (this.logger && this.logger.logFile) {
+      console.log(chalk.gray(`\n📋 Detailed logs: ${this.logger.logFile}`));
+    }
+
     console.log(chalk.gray('\nFor support, visit: https://github.com/filippo-falcone/ia-docker-template-generator'));
     process.exit(1);
   }
