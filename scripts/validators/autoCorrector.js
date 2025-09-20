@@ -151,46 +151,46 @@ class AutoCorrector {
         const { frontend, backend, cssFramework } = selections;
         
         return `
-GENERA SOLO IL CONTENUTO del file: ${fileName}
+GENERATE ONLY THE CONTENT of file: ${fileName}
 
-CONTESTO:
-- Tipo progetto: ${projectType}
+CONTEXT:
+- Project type: ${projectType}
 - Frontend: ${frontend || 'N/A'}
 - Backend: ${backend || 'N/A'}  
 - CSS Framework: ${cssFramework || 'N/A'}
 
-REQUISITI CRITICI:
-1. Genera ESATTAMENTE il contenuto che dovrebbe avere ${fileName} in un'installazione ufficiale
-2. Usa gli standard più recenti e le best practices
-3. NON aggiungere commenti extra o spiegazioni
-4. Il contenuto deve essere production-ready
-5. Segui le convenzioni ufficiali del framework
+CRITICAL REQUIREMENTS:
+1. Generate EXACTLY the content that ${fileName} should have in an official installation
+2. Use latest standards and best practices
+3. DO NOT add extra comments or explanations
+4. Content must be production-ready
+5. Follow official framework conventions
 
 ${this.getFileSpecificInstructions(fileName, projectType, selections)}
 
-IMPORTANTE: Restituisci SOLO il contenuto del file, senza wrapper di codice o spiegazioni.
+IMPORTANT: Return ONLY the file content, without code wrappers or explanations.
 `;
     }
 
     createContentFixPrompt(fileName, currentContent, missingContent, projectType, selections) {
         return `
-CORREGGI il file: ${fileName}
+FIX the file: ${fileName}
 
-CONTENUTO ATTUALE:
+CURRENT CONTENT:
 \`\`\`
 ${currentContent}
 \`\`\`
 
-MANCA QUESTO CONTENUTO CRITICO:
+MISSING THIS CRITICAL CONTENT:
 ${missingContent}
 
-ISTRUZIONI:
-1. Aggiungi il contenuto mancante nel posto corretto
-2. Mantieni tutto il contenuto esistente che è corretto
-3. Assicurati che il risultato sia sintatticamente valido
-4. Segui gli standard ufficiali per ${projectType}
+INSTRUCTIONS:
+1. Add the missing content in the correct place
+2. Keep all existing content that is correct
+3. Ensure the result is syntactically valid
+4. Follow official standards for ${projectType}
 
-IMPORTANTE: Restituisci SOLO il contenuto completo e corretto del file.
+IMPORTANT: Return ONLY the complete and correct file content.
 `;
     }
 

@@ -1,6 +1,15 @@
 // Post-Generation Validation and Correction System
 // Verifica e corregge automaticamente i progetti generati
 
+/**
+ * @fileoverview Post-generation project validation module
+ * Validates generated projects against framework standards and best practices
+ * 
+ * @author Filippo Falcone
+ * @created 2025
+ * @version 2.0.0
+ */
+
 const fs = require('fs');
 const path = require('path');
 
@@ -15,6 +24,7 @@ class PostGenerationValidator {
     // Definizioni degli standard ufficiali per ogni framework
     loadStandardDefinitions() {
         return {
+            // Frontend-only Vue project / Progetto Vue solo frontend
             'vue3-vite': {
                 requiredFiles: [
                     'package.json',
@@ -51,6 +61,58 @@ class PostGenerationValidator {
                     ]
                 }
             },
+            
+            // Fullstack Vue + Laravel project / Progetto fullstack Vue + Laravel
+            'vue3-vite-fullstack': {
+                requiredFiles: [
+                    'docker-compose.yml',
+                    'README.md',
+                    'frontend/package.json',
+                    'frontend/vite.config.js', 
+                    'frontend/index.html',
+                    'frontend/src/main.js',
+                    'frontend/src/App.vue',
+                    'frontend/Dockerfile',
+                    'frontend/nginx.conf',
+                    'frontend/.gitignore',
+                    'backend/composer.json',
+                    'backend/artisan',
+                    'backend/bootstrap/app.php',
+                    'backend/app/Http/Controllers/Controller.php',
+                    'backend/app/Models/User.php',
+                    'backend/routes/web.php',
+                    'backend/routes/api.php',
+                    'backend/.env.example',
+                    'backend/Dockerfile',
+                    'backend/.gitignore'
+                ],
+                packageJsonRequirements: {
+                    dependencies: ['vue'],
+                    devDependencies: ['@vitejs/plugin-vue', 'vite'],
+                    scripts: ['dev', 'build', 'preview']
+                },
+                composerJsonRequirements: {
+                    require: ['php', 'laravel/framework'],
+                    'require-dev': ['phpunit/phpunit']
+                },
+                fileContentRequirements: {
+                    'frontend/vite.config.js': [
+                        'import { defineConfig }',
+                        'import vue from',
+                        'plugins: [vue()]'
+                    ],
+                    'frontend/src/main.js': [
+                        'import { createApp }',
+                        'import App from',
+                        '.mount(\'#app\')'
+                    ],
+                    'frontend/index.html': [
+                        '<div id="app">',
+                        'src="/src/main.js"'
+                    ]
+                }
+            },
+
             'vue3-vite-full': {
                 requiredFiles: [
                     'package.json',
@@ -73,6 +135,7 @@ class PostGenerationValidator {
                     scripts: ['dev', 'build', 'preview']
                 }
             },
+            
             'laravel': {
                 requiredFiles: [
                     'composer.json',
@@ -93,6 +156,7 @@ class PostGenerationValidator {
                     'require-dev': ['phpunit/phpunit']
                 }
             },
+            
             'react-vite': {
                 requiredFiles: [
                     'package.json',
@@ -149,7 +213,16 @@ class PostGenerationValidator {
     }
 
     getStandardKey(projectType, selections) {
-        if (projectType === 'frontend') {
+        if (projectType === 'fullstack') {
+            // Fullstack project standards / Standard per progetti fullstack
+            if (selections.frontend?.includes('Vue') && selections.backend?.includes('Laravel')) {
+                return 'vue3-vite-fullstack';
+            } else if (selections.frontend?.includes('React') && selections.backend?.includes('Laravel')) {
+                return 'react-laravel-fullstack';
+            } else if (selections.frontend?.includes('Vue')) {
+                return 'vue3-vite-fullstack'; // Default fullstack Vue
+            }
+        } else if (projectType === 'frontend') {
             if (selections.frontend?.includes('Vue')) {
                 return selections.cssFramework && selections.cssFramework !== 'None' ? 'vue3-vite-full' : 'vue3-vite';
             } else if (selections.frontend?.includes('React')) {
@@ -198,29 +271,55 @@ class PostGenerationValidator {
     }
 
     async validateDependencies(projectPath, standard) {
-        // Valida package.json
+        // Validate package.json / Valida package.json
         if (standard.packageJsonRequirements) {
-            const packageJsonPath = path.join(projectPath, 'package.json');
-            if (fs.existsSync(packageJsonPath)) {
-                try {
-                    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-                    this.validatePackageJsonDependencies(packageJson, standard.packageJsonRequirements);
-                } catch (error) {
-                    this.validationErrors.push(`Error parsing package.json: ${error.message}`);
+            // Check for package.json in root or frontend/ for fullstack projects
+            // Controlla package.json nella root o in frontend/ per progetti fullstack
+            const possiblePaths = ['package.json', 'frontend/package.json'];
+            let packageJsonFound = false;
+            
+            for (const pkgPath of possiblePaths) {
+                const packageJsonPath = path.join(projectPath, pkgPath);
+                if (fs.existsSync(packageJsonPath)) {
+                    try {
+                        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+                        this.validatePackageJsonDependencies(packageJson, standard.packageJsonRequirements);
+                        packageJsonFound = true;
+                        break;
+                    } catch (error) {
+                        this.validationErrors.push(`Error parsing ${pkgPath}: ${error.message}`);
+                    }
                 }
+            }
+            
+            if (!packageJsonFound) {
+                this.validationErrors.push('No package.json found in expected locations');
             }
         }
 
-        // Valida composer.json
+        // Validate composer.json / Valida composer.json
         if (standard.composerJsonRequirements) {
-            const composerJsonPath = path.join(projectPath, 'composer.json');
-            if (fs.existsSync(composerJsonPath)) {
-                try {
-                    const composerJson = JSON.parse(fs.readFileSync(composerJsonPath, 'utf8'));
-                    this.validateComposerJsonDependencies(composerJson, standard.composerJsonRequirements);
-                } catch (error) {
-                    this.validationErrors.push(`Error parsing composer.json: ${error.message}`);
+            // Check for composer.json in root or backend/ for fullstack projects
+            // Controlla composer.json nella root o in backend/ per progetti fullstack
+            const possiblePaths = ['composer.json', 'backend/composer.json'];
+            let composerJsonFound = false;
+            
+            for (const composerPath of possiblePaths) {
+                const composerJsonPath = path.join(projectPath, composerPath);
+                if (fs.existsSync(composerJsonPath)) {
+                    try {
+                        const composerJson = JSON.parse(fs.readFileSync(composerJsonPath, 'utf8'));
+                        this.validateComposerJsonDependencies(composerJson, standard.composerJsonRequirements);
+                        composerJsonFound = true;
+                        break;
+                    } catch (error) {
+                        this.validationErrors.push(`Error parsing ${composerPath}: ${error.message}`);
+                    }
                 }
+            }
+            
+            if (!composerJsonFound && standard.composerJsonRequirements) {
+                this.validationErrors.push('No composer.json found in expected locations');
             }
         }
     }
@@ -330,36 +429,36 @@ class PostGenerationValidator {
         };
     }
 
-    // Genera un prompt per correggere i problemi trovati
+    // Generate prompt to fix detected issues / Genera un prompt per correggere i problemi rilevati
     generateFixPrompt(validationResult, projectType, selections) {
         if (!validationResult.hasIssues) {
             return null;
         }
 
         let fixPrompt = `
-## CORREZIONE AUTOMATICA RICHIESTA
+## AUTOMATIC CORRECTION REQUIRED
 
-I seguenti problemi sono stati rilevati nel progetto generato e devono essere corretti:
+The following issues have been detected in the generated project and must be corrected:
 
-### File Mancanti:
+### Missing Files:
 ${validationResult.missingFiles.map(file => `- ${file}`).join('\n')}
 
-### Contenuti Incompleti:
-${validationResult.incompleteFiles.map(item => `- ${item.file}: manca "${item.missing}"`).join('\n')}
+### Incomplete Content:
+${validationResult.incompleteFiles.map(item => `- ${item.file}: missing "${item.missing}"`).join('\n')}
 
-### Errori di Validazione:
+### Validation Errors:
 ${validationResult.errors.join('\n')}
 
-## ISTRUZIONI PER LA CORREZIONE:
+## CORRECTION INSTRUCTIONS:
 
-CREA SOLO I FILE MANCANTI E CORREGGI I CONTENUTI INCOMPLETI.
-NON ricreare file che già esistono e funzionano correttamente.
+CREATE ONLY THE MISSING FILES AND FIX THE INCOMPLETE CONTENT.
+DO NOT recreate files that already exist and work correctly.
 
-Per ogni file mancante, generalo con il contenuto standard ufficiale per ${projectType} con ${selections.frontend || selections.backend}.
+For each missing file, generate it with the official standard content for ${projectType} with ${selections.frontend || selections.backend}.
 
-Per ogni contenuto incompleto, aggiungi solo le righe mancanti al file esistente.
+For each incomplete content, add only the missing lines to the existing file.
 
-ASSICURATI che ogni file generato segua esattamente gli standard ufficiali del framework.
+ENSURE that each generated file follows exactly the official framework standards.
 `;
 
         return fixPrompt;

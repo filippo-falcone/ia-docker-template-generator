@@ -1,4 +1,13 @@
-const { ProjectValidator } = require('./projectValidator');
+/**
+ * @fileoverview AI prompt builder for project generation
+ * Constructs optimized prompts for Google Gemini AI model in English
+ * 
+ * @author Filippo Falcone
+ * @created 2025
+ * @version 2.0.0
+ */
+
+const { ProjectValidator } = require('../validators/projectValidator');
 
 class PromptBuilder {
     constructor() {
@@ -148,30 +157,30 @@ class PromptBuilder {
         const stackType = isFullStack ? 'Full Stack' : (selections.frontend ? 'Frontend' : 'Backend');
         
         return `
-# ${stackType} Application Generator con Docker
+# ${stackType} Application Generator with Docker
 
-Genera un'applicazione ${stackType.toLowerCase()} containerizzata seguendo le ESATTE convenzioni ufficiali:
+Generate a ${stackType.toLowerCase()} containerized application following EXACT official conventions:
 
 ${selections.frontend ? `- **Frontend**: ${selections.frontend}` : ''}
 ${selections.backend ? `- **Backend**: ${selections.backend}` : ''}
 ${selections.cssFramework && selections.cssFramework !== 'None' ? `- **CSS Framework**: ${selections.cssFramework}` : ''}
-- **Containerizzazione**: Docker + Docker Compose (SEMPRE INCLUSO)
+- **Containerization**: Docker + Docker Compose (ALWAYS INCLUDED)
 
-## OBIETTIVO PRINCIPALE:
-🐳 **AMBIENTE DOCKERIZZATO COMPLETO** - Nessuna installazione locale richiesta!
+## PRIMARY OBJECTIVE:
+🐳 **COMPLETE DOCKERIZED ENVIRONMENT** - No local installations required!
 
-## REQUISITI CRITICI:
-1. **USA COMANDI UFFICIALI**: Replica ESATTAMENTE i comandi di installazione ufficiali
-2. **STRUTTURA AUTENTICA**: Crea la struttura identica agli scaffolding ufficiali
-3. **DIPENDENZE CORRETTE**: Usa le versioni e dipendenze esatte degli strumenti ufficiali
-4. **ZERO ERRORI**: Previeni tutti gli errori comuni documentati
-5. **PRODUCTION READY**: Configura per deployment immediato
-6. **DOCKER FIRST**: Tutto deve funzionare via Docker senza installazioni locali
+## CRITICAL REQUIREMENTS:
+1. **USE OFFICIAL COMMANDS**: Replicate EXACTLY the official installation commands
+2. **AUTHENTIC STRUCTURE**: Create structure identical to official scaffolding
+3. **CORRECT DEPENDENCIES**: Use exact versions and dependencies from official tools
+4. **ZERO ERRORS**: Prevent all documented common errors
+5. **PRODUCTION READY**: Configure for immediate deployment
+6. **DOCKER FIRST**: Everything must work via Docker without local installations
         `;
     }
 
     buildProjectStructure(modules) {
-        let structure = '\n## STRUTTURA DEL PROGETTO\n\n';
+        let structure = '\n## PROJECT STRUCTURE\n\n';
         
         modules.forEach(moduleKey => {
             const module = this.technologyModules[moduleKey];
@@ -184,7 +193,7 @@ ${selections.cssFramework && selections.cssFramework !== 'None' ? `- **CSS Frame
     }
 
     buildDependencies(modules) {
-        let dependencies = '\n## DIPENDENZE E INSTALLAZIONE\n\n';
+        let dependencies = '\n## DEPENDENCIES AND INSTALLATION\n\n';
         
         modules.forEach(moduleKey => {
             const module = this.technologyModules[moduleKey];
@@ -197,7 +206,7 @@ ${selections.cssFramework && selections.cssFramework !== 'None' ? `- **CSS Frame
     }
 
     buildConfigurations(modules) {
-        let configs = '\n## FILE DI CONFIGURAZIONE\n\n';
+        let configs = '\n## CONFIGURATION FILES\n\n';
         
         modules.forEach(moduleKey => {
             const module = this.technologyModules[moduleKey];
@@ -218,7 +227,7 @@ ${selections.cssFramework && selections.cssFramework !== 'None' ? `- **CSS Frame
     }
 
     buildValidationRules(modules) {
-        let validation = '\n## REGOLE DI VALIDAZIONE\n\n';
+        let validation = '\n## VALIDATION RULES\n\n';
         
         modules.forEach(moduleKey => {
             const module = this.technologyModules[moduleKey];
@@ -231,7 +240,7 @@ ${selections.cssFramework && selections.cssFramework !== 'None' ? `- **CSS Frame
     }
 
     buildErrorPrevention(modules) {
-        let errors = '\n## PREVENZIONE ERRORI COMUNI\n\n';
+        let errors = '\n## COMMON ERROR PREVENTION\n\n';
         
         modules.forEach(moduleKey => {
             const module = this.technologyModules[moduleKey];

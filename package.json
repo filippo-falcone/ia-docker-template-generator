@@ -1,6 +1,6 @@
 {
   "name": "ia-docker-template-generator",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "AI-powered template generator for web projects that creates appropriate project structures and Docker files",
   "main": "index.js",
   "scripts": {
