@@ -27,17 +27,18 @@ class PostGenerationValidator {
             // Frontend-only Vue project / Progetto Vue solo frontend
             'vue3-vite': {
                 requiredFiles: [
-                    'package.json',
-                    'vite.config.js', 
-                    'index.html',
-                    'src/main.js',
-                    'src/App.vue',
-                    'README.md',
-                    'Dockerfile',
+                    'frontend/package.json',
+                    'frontend/package-lock.json',
+                    'frontend/vite.config.js',
+                    'frontend/index.html',
+                    'frontend/src/main.js',
+                    'frontend/src/App.vue',
+                    'frontend/README.md',
+                    'frontend/Dockerfile',
                     'docker-compose.yml',
-                    'nginx.conf',
-                    '.gitignore',
-                    '.dockerignore'
+                    'frontend/nginx.conf',
+                    'frontend/.gitignore',
+                    'frontend/.dockerignore'
                 ],
                 packageJsonRequirements: {
                     dependencies: ['vue'],
@@ -68,6 +69,7 @@ class PostGenerationValidator {
                     'docker-compose.yml',
                     'README.md',
                     'frontend/package.json',
+                    'frontend/package-lock.json',
                     'frontend/vite.config.js', 
                     'frontend/index.html',
                     'frontend/src/main.js',
@@ -76,6 +78,7 @@ class PostGenerationValidator {
                     'frontend/nginx.conf',
                     'frontend/.gitignore',
                     'backend/composer.json',
+                    'backend/composer.lock',
                     'backend/artisan',
                     'backend/bootstrap/app.php',
                     'backend/app/Http/Controllers/Controller.php',
@@ -159,17 +162,18 @@ class PostGenerationValidator {
             
             'react-vite': {
                 requiredFiles: [
-                    'package.json',
-                    'vite.config.js',
-                    'index.html',
-                    'src/main.jsx',
-                    'src/App.jsx',
-                    'README.md',
-                    'Dockerfile',
+                    'frontend/package.json',
+                    'frontend/package-lock.json',
+                    'frontend/vite.config.js',
+                    'frontend/index.html',
+                    'frontend/src/main.jsx',
+                    'frontend/src/App.jsx',
+                    'frontend/README.md',
+                    'frontend/Dockerfile',
                     'docker-compose.yml',
-                    'nginx.conf',
-                    '.gitignore',
-                    '.dockerignore'
+                    'frontend/nginx.conf',
+                    'frontend/.gitignore',
+                    'frontend/.dockerignore'
                 ],
                 packageJsonRequirements: {
                     dependencies: ['react', 'react-dom'],

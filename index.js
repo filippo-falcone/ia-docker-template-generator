@@ -16,7 +16,7 @@ require('dotenv').config({ quiet: true });
  * @version 2.0.0
  */
 
-const { UserPreferences } = require('./scripts/cli/userPreferences');
+const UserPreferences = require('./scripts/cli/userPreferences');
 const ApiKeyManager = require('./scripts/cli/apiKeyManager');
 const ProjectGenerator = require('./scripts/generators/projectGenerator');
 
@@ -62,6 +62,8 @@ class TemplateGenerator {
     let preferences;
     let confirmed = false;
     
+    const fs = require('fs');
+    const path = require('path');
     while (!confirmed) {
       // Collect all preferences / Raccoglie tutte le preferenze
       preferences = await this.userPreferences.collectPreferences();
@@ -75,6 +77,15 @@ class TemplateGenerator {
         console.log(chalk.yellow('Restarting configuration...\n'));
         this.userPreferences.reset();
       } else if (confirmation === 'cancel') {
+        // Cleanup project directory if it exists
+        if (preferences && preferences.projectPath && fs.existsSync(preferences.projectPath)) {
+          try {
+            fs.rmSync(preferences.projectPath, { recursive: true, force: true });
+            console.log(chalk.gray(`Cleaned up project directory: ${preferences.projectPath}`));
+          } catch (err) {
+            console.log(chalk.red(`Failed to cleanup project directory: ${err.message}`));
+          }
+        }
         console.log(chalk.red('Project generation cancelled. Goodbye!'));
         process.exit(0);
       }

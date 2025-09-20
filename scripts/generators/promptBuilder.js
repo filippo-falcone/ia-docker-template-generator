@@ -9,6 +9,9 @@
 
 const { ProjectValidator } = require('../validators/projectValidator');
 
+const fs = require('fs');
+const path = require('path');
+
 class PromptBuilder {
     constructor() {
         this.technologyModules = {
@@ -50,34 +53,110 @@ class PromptBuilder {
         this.validator = new ProjectValidator();
     }
 
-    buildPrompt(selections) {
-        // Salva le opzioni per uso nei metodi successivi
-        this.options = selections;
-        
-        const { 
-            frontend, 
-            backend, 
-            cssFramework, 
-            includeDocker = true,
-            includeAuth = false,
-            isFullStack = false 
-        } = selections;
 
-        // Determina i moduli necessari
+    buildPrompt(selections) {
+        this.options = selections;
+        const stackInfo = this.getOfficialStackInfo(selections);
+        let officialFilesSection = '';
+        if (stackInfo) {
+            const { baseDir, filesToInclude, label } = stackInfo;
+            officialFilesSection = `\n\n## OFFICIAL FILES (${label})\n`;
+            filesToInclude.forEach(relPath => {
+                const absPath = path.join(baseDir, relPath);
+                if (fs.existsSync(absPath)) {
+                    let content = fs.readFileSync(absPath, 'utf8');
+                    if (content.length > 4000) content = content.slice(0, 4000) + '\n...TRUNCATED...';
+                    officialFilesSection += `\n### ${relPath}\n\n\u0060\u0060\u0060${this.detectLang(relPath)}\n${content}\n\u0060\u0060\u0060\n`;
+                }
+            });
+        }
         const requiredModules = this.determineRequiredModules(selections);
-        
-        // Costruisci il prompt modulare
         const promptSections = {
             header: this.buildHeader(selections),
             projectStructure: this.buildProjectStructure(requiredModules),
             dependencies: this.buildDependencies(requiredModules),
             configurations: this.buildConfigurations(requiredModules),
-            dockerization: this.buildDockerConfig(requiredModules), // SEMPRE incluso
+            dockerization: this.buildDockerConfig(requiredModules),
             validation: this.buildValidationRules(requiredModules),
-            commonErrors: this.buildErrorPrevention(requiredModules)
+            commonErrors: this.buildErrorPrevention(requiredModules),
+            officialFiles: officialFilesSection
         };
-
         return this.assemblePrompt(promptSections);
+    }
+
+    getOfficialStackInfo(selections) {
+        // Map frontend/backend to official template folder and files
+        const stackMap = [
+            {
+                match: s => s.frontend && s.frontend.includes('React') && !s.frontend.includes('Vite'),
+                baseDir: path.resolve(__dirname, '../../temp/react-basic-official/my-react-basic-app'),
+                files: [
+                    'README.md', 'package.json', 'package-lock.json', '.gitignore',
+                    'src/App.js', 'public/index.html'
+                ],
+                label: 'React Basic'
+            },
+            {
+                match: s => s.frontend && s.frontend.includes('React') && s.frontend.includes('Vite'),
+                baseDir: path.resolve(__dirname, '../../temp/react-vite-official/my-react-app'),
+                files: [
+                    'README.md', 'package.json', 'package-lock.json', '.gitignore',
+                    'src/App.jsx', 'index.html', 'vite.config.js'
+                ],
+                label: 'React + Vite'
+            },
+            {
+                match: s => s.frontend && s.frontend.includes('Vue') && s.frontend.includes('Vite'),
+                baseDir: path.resolve(__dirname, '../../temp/vite-vue-official/my-vue-app'),
+                files: [
+                    'README.md', 'package.json', 'package-lock.json', '.gitignore',
+                    'src/App.vue', 'index.html', 'vite.config.js'
+                ],
+                label: 'Vite + Vue'
+            },
+            {
+                match: s => s.frontend && s.frontend === 'Vue (Vue 3)',
+                baseDir: path.resolve(__dirname, '../../temp/vue3-basic-official/my-vue3-app'),
+                files: [
+                    'README.md', 'package.json', 'package-lock.json', '.gitignore',
+                    'src/App.vue', 'public/index.html'
+                ],
+                label: 'Vue 3 Basic'
+            },
+            {
+                match: s => s.frontend && s.frontend.includes('Angular') && s.frontend.includes('Standalone'),
+                baseDir: path.resolve(__dirname, '../../temp/angular-standalone-official/my-standalone-app'),
+                files: [
+                    'README.md', 'package.json', 'package-lock.json', '.gitignore',
+                    'src/main.ts', 'src/app/app.component.ts', 'angular.json'
+                ],
+                label: 'Angular Standalone'
+            },
+            {
+                match: s => s.frontend && s.frontend.includes('Angular'),
+                baseDir: path.resolve(__dirname, '../../temp/angular-cli-official/my-app'),
+                files: [
+                    'README.md', 'package.json', 'package-lock.json', '.gitignore',
+                    'src/main.ts', 'src/app/app.component.ts', 'angular.json'
+                ],
+                label: 'Angular CLI'
+            }
+        ];
+        for (const stack of stackMap) {
+            if (stack.match(selections)) {
+                return { baseDir: stack.baseDir, filesToInclude: stack.files, label: stack.label };
+            }
+        }
+        return null;
+    }
+
+    detectLang(filename) {
+        if (filename.endsWith('.js')) return 'javascript';
+        if (filename.endsWith('.json')) return 'json';
+        if (filename.endsWith('.md')) return 'markdown';
+        if (filename.endsWith('.html')) return 'html';
+        if (filename.endsWith('.gitignore')) return 'ignore';
+        return '';
     }
 
     determineRequiredModules(selections) {
@@ -176,6 +255,15 @@ ${selections.cssFramework && selections.cssFramework !== 'None' ? `- **CSS Frame
 4. **ZERO ERRORS**: Prevent all documented common errors
 5. **PRODUCTION READY**: Configure for immediate deployment
 6. **DOCKER FIRST**: Everything must work via Docker without local installations
+7. **MANDATORY FILES**: You MUST generate ALL lockfiles in the correct subfolders and ALL essential files. If ANY required file is missing, the project is INVALID and must be deleted.
+
+    /*
+    Required lockfiles by stack:
+    - frontend/package-lock.json (or yarn.lock or pnpm-lock.yaml) for Node.js projects
+    - backend/composer.lock for Laravel/PHP projects
+    - Any other lockfile required by the stack
+    - ALL essential files (Dockerfile, docker-compose.yml, .env, vite.config.js, README.md, etc.)
+    */
         `;
     }
 

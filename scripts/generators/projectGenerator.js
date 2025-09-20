@@ -52,15 +52,25 @@ class ProjectGenerator {
       const filesCreated = await this.generateProjectFiles(preferences, fileList);
       this.logger.userSuccess(`Created ${filesCreated} project files`);
 
-      // 4. Validate and auto-correct (silent) / Valida e correggi automaticamente (silenzioso)
+      // 4. Validate and auto-correct - MUST be 100% successful / Valida e correggi automaticamente - DEVE essere 100% riuscito
       const validationSuccess = await this.validateAndCorrect(preferences);
       
-      // 5. Log generation summary / Registra riassunto generazione
+      if (!validationSuccess) {
+        // Project validation failed - cleanup and abort / Validazione progetto fallita - pulisci e interrompi
+        this.logger.error('Project validation failed after maximum correction attempts');
+        await this.cleanupFailedProject(preferences.projectPath);
+        this.logger.userError('❌ Project generation failed: Unable to create a 100% valid project structure');
+        this.logger.userError('🗑️  Cleaned up incomplete files');
+        this.logger.userError('💡 Please try again or report this issue if it persists');
+        return false;
+      }
+      
+      // 5. Log generation summary (only for successful projects) / Registra riassunto generazione (solo per progetti riusciti)
       this.logger.logGenerationSummary(preferences, filesCreated, validationSuccess);
 
       this.logger.userSuccess(`Project "${preferences.projectName}" created successfully!`);
       console.log(chalk.blue(`📁 Location: ${preferences.projectPath}`));
-      console.log(chalk.gray(`� Detailed logs: ${this.logger.getLogPath()}`));
+      console.log(chalk.gray(`📋 Detailed logs: ${this.logger.getLogPath()}`));
       
       return true;
       
@@ -145,12 +155,19 @@ Example JSON output:
     return promptText;
   }
 
-  // Generate content for all project files / Genera contenuto per tutti i file del progetto
+  // Generate content for all project files with progress indication / Genera contenuto per tutti i file del progetto con indicazione progresso
   async generateProjectFiles(preferences, fileList) {
-    const spinner = ora(`Generating project files...`).start();
+    console.log(chalk.blue(`📁 Creating ${fileList.length} project files...`));
     let filesCreated = 0;
 
-    for (const filePath of fileList) {
+    for (let i = 0; i < fileList.length; i++) {
+      const filePath = fileList[i];
+      const progress = Math.round(((i + 1) / fileList.length) * 100);
+      
+      // Update progress display / Aggiorna visualizzazione progresso
+      const fileName = filePath.length > 45 ? '...' + filePath.slice(-42) : filePath;
+      process.stdout.write(`\r${chalk.cyan('⚡')} Generating... ${chalk.yellow(`${i + 1}/${fileList.length}`)} ${chalk.green(`(${progress}%)`)} ${chalk.gray(fileName)}`);
+      
       try {
         const content = await this.generateSingleFileContent(preferences, filePath, fileList);
         
@@ -166,7 +183,9 @@ Example JSON output:
       }
     }
 
-    spinner.succeed(chalk.green(`Generated ${filesCreated}/${fileList.length} files`));
+    // Clear progress line and show final result / Pulisci riga progresso e mostra risultato finale
+    process.stdout.write('\r' + ' '.repeat(120) + '\r');
+    console.log(chalk.green(`✔ Generated ${filesCreated}/${fileList.length} files`));
     return filesCreated;
   }
 
@@ -297,6 +316,24 @@ ${JSON.stringify(fileList, null, 2)}
     }
     
     return finalSuccess;
+  }
+
+  // Cleanup failed project - remove all generated files / Pulisci progetto fallito - rimuovi tutti i file generati
+  async cleanupFailedProject(projectPath) {
+    try {
+      const fs = require('fs').promises;
+      
+      // Check if directory exists / Controlla se la directory esiste
+      if (fs.access && await fs.access(projectPath).then(() => true).catch(() => false)) {
+        // Remove entire project directory / Rimuovi intera directory del progetto
+        await fs.rmdir(projectPath, { recursive: true });
+        this.logger.info(`Cleaned up failed project directory: ${projectPath}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to cleanup project directory: ${error.message}`);
+      // Don't throw - this is cleanup, shouldn't block the error reporting
+      // Non lanciare errore - questa è pulizia, non dovrebbe bloccare il reporting errori
+    }
   }
 }
 
